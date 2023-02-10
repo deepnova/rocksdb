@@ -51,7 +51,7 @@ class FlushBlockPolicyFactory : public Customizable {
   // result has been closed.
   virtual FlushBlockPolicy* NewFlushBlockPolicy(
       const BlockBasedTableOptions& table_options,
-      const BlockBuilder& data_block_builder) const = 0;
+      const BlockBuilder* data_block_builder) const = 0;
 
   virtual ~FlushBlockPolicyFactory() {}
 };
@@ -65,11 +65,11 @@ class FlushBlockBySizePolicyFactory : public FlushBlockPolicyFactory {
 
   FlushBlockPolicy* NewFlushBlockPolicy(
       const BlockBasedTableOptions& table_options,
-      const BlockBuilder& data_block_builder) const override;
+      const BlockBuilder* data_block_builder) const override;
 
   static FlushBlockPolicy* NewFlushBlockPolicy(
       const uint64_t size, const int deviation,
-      const BlockBuilder& data_block_builder);
+      const BlockBuilder* data_block_builder);
 };
 
 }  // namespace ROCKSDB_NAMESPACE

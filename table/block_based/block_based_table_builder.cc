@@ -41,6 +41,7 @@
 #include "table/block_based/block_based_table_factory.h"
 #include "table/block_based/block_based_table_reader.h"
 #include "table/block_based/block_builder.h"
+#include "table/block_based/ln_block_builder.h"
 #include "table/block_based/block_like_traits.h"
 #include "table/block_based/filter_block.h"
 #include "table/block_based/filter_policy_internal.h"
@@ -263,12 +264,14 @@ struct BlockBasedTableBuilder::Rep {
   WritableFileWriter* file;
   std::atomic<uint64_t> offset;
   size_t alignment;
-  BlockBuilder data_block;
+  //std::shared_ptr<BlockBuilder> data_block;
+  BlockBuilder* data_block = nullptr;
   // Buffers uncompressed data blocks to replay later. Needed when
   // compression dictionary is enabled so we can finalize the dictionary before
   // compressing any data blocks.
   std::vector<std::string> data_block_buffers;
-  BlockBuilder range_del_block;
+  //std::shared_ptr<BlockBuilder> range_del_block;
+  BlockBuilder* range_del_block = nullptr;
 
   InternalKeySliceTransform internal_prefix_transform;
   std::unique_ptr<IndexBuilder> index_builder;
@@ -290,6 +293,7 @@ struct BlockBasedTableBuilder::Rep {
   std::unique_ptr<UncompressionDict> verify_dict;
 
   size_t data_begin_offset = 0;
+  bool is_last_level = false;
 
   TableProperties props;
 
@@ -330,7 +334,8 @@ struct BlockBasedTableBuilder::Rep {
   BlockHandle pending_handle;  // Handle to add to index block
 
   std::string compressed_output;
-  std::unique_ptr<FlushBlockPolicy> flush_block_policy;
+  //std::unique_ptr<FlushBlockPolicy> flush_block_policy;
+  FlushBlockPolicy* flush_block_policy = nullptr;
 
   std::vector<std::unique_ptr<IntTblPropCollector>> table_properties_collectors;
 
@@ -413,15 +418,6 @@ struct BlockBasedTableBuilder::Rep {
                       ? std::min(static_cast<size_t>(table_options.block_size),
                                  kDefaultPageSize)
                       : 0),
-        data_block(table_options.block_restart_interval,
-                   table_options.use_delta_encoding,
-                   false /* use_value_delta_encoding */,
-                   tbo.internal_comparator.user_comparator()
-                           ->CanKeysWithDifferentByteContentsBeEqual()
-                       ? BlockBasedTableOptions::kDataBlockBinarySearch
-                       : table_options.data_block_index_type,
-                   table_options.data_block_hash_table_util_ratio),
-        range_del_block(1 /* block_restart_interval */),
         internal_prefix_transform(tbo.moptions.prefix_extractor.get()),
         compression_type(tbo.compression_type),
         sample_for_compression(tbo.moptions.sample_for_compression),
@@ -440,11 +436,35 @@ struct BlockBasedTableBuilder::Rep {
         use_delta_encoding_for_index_values(table_opt.format_version >= 4 &&
                                             !table_opt.block_align),
         reason(tbo.reason),
-        flush_block_policy(
-            table_options.flush_block_policy_factory->NewFlushBlockPolicy(
-                table_options, data_block)),
         status_ok(true),
         io_status_ok(true) {
+
+    if (tbo.level_at_creation == tbo.ioptions.num_levels - 1) { // last level
+        is_last_level = true;
+        // parquet row group builder
+        data_block = new LnBlockBuilder(table_options.block_restart_interval,
+                   table_options.use_delta_encoding,
+                   false /* use_value_delta_encoding */,
+                   tbo.internal_comparator.user_comparator()
+                           ->CanKeysWithDifferentByteContentsBeEqual()
+                       ? BlockBasedTableOptions::kDataBlockBinarySearch
+                       : table_options.data_block_index_type,
+                   table_options.data_block_hash_table_util_ratio);
+        range_del_block = new LnBlockBuilder(1);
+    } else {
+        data_block = new BlockBuilder(table_options.block_restart_interval,
+                   table_options.use_delta_encoding,
+                   false /* use_value_delta_encoding */,
+                   tbo.internal_comparator.user_comparator()
+                           ->CanKeysWithDifferentByteContentsBeEqual()
+                       ? BlockBasedTableOptions::kDataBlockBinarySearch
+                       : table_options.data_block_index_type,
+                   table_options.data_block_hash_table_util_ratio);
+        range_del_block = new BlockBuilder(1);
+    }
+    flush_block_policy = table_options.flush_block_policy_factory->NewFlushBlockPolicy(
+                table_options, (const BlockBuilder*)data_block);
+
     if (tbo.target_file_size == 0) {
       buffer_limit = compression_opts.max_dict_buffer_bytes;
     } else if (compression_opts.max_dict_buffer_bytes == 0) {
@@ -558,6 +578,12 @@ struct BlockBasedTableBuilder::Rep {
 
   Rep(const Rep&) = delete;
   Rep& operator=(const Rep&) = delete;
+
+  ~Rep() {
+      if(data_block != nullptr) delete data_block;
+      if(range_del_block != nullptr) delete range_del_block;
+      if(flush_block_policy != nullptr) delete flush_block_policy;
+  }
 
  private:
   // Synchronize status & io_status accesses across threads from main thread,
@@ -927,7 +953,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
 
     auto should_flush = r->flush_block_policy->Update(key, value);
     if (should_flush) {
-      assert(!r->data_block.empty());
+      assert(!r->data_block->empty());
       r->first_key_in_next_block = &key;
       Flush();
       if (r->state == Rep::State::kBuffered) {
@@ -983,7 +1009,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
       }
     }
 
-    r->data_block.AddWithLastKey(key, value, r->last_key);
+    r->data_block->AddWithLastKey(key, value, r->last_key);
     r->last_key.assign(key.data(), key.size());
     if (r->state == Rep::State::kBuffered) {
       // Buffered keys will be replayed from data_block_buffers during
@@ -999,7 +1025,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
                                       r->ioptions.logger);
 
   } else if (value_type == kTypeRangeDeletion) {
-    r->range_del_block.Add(key, value);
+    r->range_del_block->Add(key, value);
     // TODO offset passed in is not accurate for parallel compression case
     NotifyCollectTableCollectorsOnAdd(key, value, r->get_offset(),
                                       r->table_properties_collectors,
@@ -1026,18 +1052,22 @@ void BlockBasedTableBuilder::Flush() {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
   if (!ok()) return;
-  if (r->data_block.empty()) return;
+  if (r->data_block->empty()) return;
   if (r->IsParallelCompressionEnabled() &&
       r->state == Rep::State::kUnbuffered) {
-    r->data_block.Finish();
+    r->data_block->Finish();
     ParallelCompressionRep::BlockRep* block_rep = r->pc_rep->PrepareBlock(
-        r->compression_type, r->first_key_in_next_block, &(r->data_block));
+        r->compression_type, r->first_key_in_next_block, r->data_block);
     assert(block_rep != nullptr);
     r->pc_rep->file_size_estimator.EmitBlock(block_rep->data->size(),
                                              r->get_offset());
     r->pc_rep->EmitBlock(block_rep);
   } else {
-    WriteBlock(&r->data_block, &r->pending_handle, BlockType::kData);
+    if(rep_->is_last_level) {
+      LastLevelWriteBlock(r->data_block, &r->pending_handle, BlockType::kData);
+    }else{
+      WriteBlock(r->data_block, &r->pending_handle, BlockType::kData);
+    } 
   }
 }
 
@@ -1083,6 +1113,23 @@ void BlockBasedTableBuilder::WriteBlock(const Slice& uncompressed_block_data,
     ++r->props.num_data_blocks;
   }
 }
+
+void BlockBasedTableBuilder::LastLevelWriteBlock(BlockBuilder* block,
+                                                 BlockHandle* handle,
+                                                 BlockType block_type) {
+  block->Finish();
+  std::string uncompressed_block_data;
+  uncompressed_block_data.reserve(rep_->table_options.block_size);
+  block->SwapAndReset(uncompressed_block_data);
+  if (rep_->state == Rep::State::kBuffered) {
+    assert(block_type == BlockType::kData);
+    rep_->data_block_buffers.emplace_back(std::move(uncompressed_block_data));
+    rep_->data_begin_offset += rep_->data_block_buffers.back().size();
+    return;
+  }
+  WriteBlock(uncompressed_block_data, handle, block_type);
+}
+
 
 void BlockBasedTableBuilder::BGWorkCompression(
     const CompressionContext& compression_ctx,
@@ -1779,9 +1826,9 @@ void BlockBasedTableBuilder::WriteCompressionDictBlock(
 
 void BlockBasedTableBuilder::WriteRangeDelBlock(
     MetaIndexBuilder* meta_index_builder) {
-  if (ok() && !rep_->range_del_block.empty()) {
+  if (ok() && !rep_->range_del_block->empty()) {
     BlockHandle range_del_block_handle;
-    WriteMaybeCompressedBlock(rep_->range_del_block.Finish(), kNoCompression,
+    WriteMaybeCompressedBlock(rep_->range_del_block->Finish(), kNoCompression,
                               &range_del_block_handle,
                               BlockType::kRangeDeletion);
     meta_index_builder->Add(kRangeDelBlockName, range_del_block_handle);
@@ -1965,7 +2012,7 @@ void BlockBasedTableBuilder::EnterUnbuffered() {
 Status BlockBasedTableBuilder::Finish() {
   Rep* r = rep_;
   assert(r->state != Rep::State::kClosed);
-  bool empty_data_block = r->data_block.empty();
+  bool empty_data_block = r->data_block->empty();
   r->first_key_in_next_block = nullptr;
   Flush();
   if (r->state == Rep::State::kBuffered) {

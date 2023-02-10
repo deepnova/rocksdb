@@ -32,7 +32,7 @@ class FlushBlockEveryKeyPolicyFactory : public FlushBlockPolicyFactory {
 
   FlushBlockPolicy* NewFlushBlockPolicy(
       const BlockBasedTableOptions& /*table_options*/,
-      const BlockBuilder& /*data_block_builder*/) const override {
+      const BlockBuilder* /*data_block_builder*/) const override {
     return new FlushBlockEveryKeyPolicy;
   }
 };
