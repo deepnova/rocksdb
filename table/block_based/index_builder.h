@@ -181,7 +181,7 @@ class ShortenedIndexBuilder : public IndexBuilder {
                      &last_encoded_handle_);
     } else {
       // If it's the first block, or delta encoding is disabled,
-      // BlockBuilder::Add() below won't use delta-encoded slice.
+      // GeneralBlockBuilder::Add() below won't use delta-encoded slice.
     }
     last_encoded_handle_ = block_handle;
     const Slice delta_encoded_entry_slice(delta_encoded_entry);
@@ -226,8 +226,8 @@ class ShortenedIndexBuilder : public IndexBuilder {
   friend class PartitionedIndexBuilder;
 
  private:
-  BlockBuilder index_block_builder_;
-  BlockBuilder index_block_builder_without_seq_;
+  GeneralBlockBuilder index_block_builder_;
+  GeneralBlockBuilder index_block_builder_without_seq_;
   const bool use_value_delta_encoding_;
   bool seperator_is_key_plus_seq_;
   const bool include_first_key_;
@@ -433,8 +433,8 @@ class PartitionedIndexBuilder : public IndexBuilder {
     std::unique_ptr<ShortenedIndexBuilder> value;
   };
   std::list<Entry> entries_;  // list of partitioned indexes and their keys
-  BlockBuilder index_block_builder_;              // top-level index builder
-  BlockBuilder index_block_builder_without_seq_;  // same for user keys
+  GeneralBlockBuilder index_block_builder_;              // top-level index builder
+  GeneralBlockBuilder index_block_builder_without_seq_;  // same for user keys
   // the active partition index builder
   ShortenedIndexBuilder* sub_index_builder_;
   // the last key in the active partition index builder

@@ -33,7 +33,7 @@ const std::string kCompressionDictBlockName = "rocksdb.compression_dict";
 const std::string kRangeDelBlockName = "rocksdb.range_del";
 
 MetaIndexBuilder::MetaIndexBuilder()
-    : meta_index_block_(new BlockBuilder(1 /* restart interval */)) {}
+    : meta_index_block_(new GeneralBlockBuilder(1 /* restart interval */)) {}
 
 void MetaIndexBuilder::Add(const std::string& key, const BlockHandle& handle) {
   std::string handle_encoding;
@@ -52,7 +52,7 @@ Slice MetaIndexBuilder::Finish() {
 // object, so there's no need for restart points. Thus we set the restart
 // interval to infinity to save space.
 PropertyBlockBuilder::PropertyBlockBuilder()
-    : properties_block_(new BlockBuilder(
+    : properties_block_(new GeneralBlockBuilder(
           std::numeric_limits<int32_t>::max() /* restart interval */)) {}
 
 void PropertyBlockBuilder::Add(const std::string& name,

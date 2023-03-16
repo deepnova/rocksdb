@@ -44,7 +44,7 @@ class PlainTableKeyEncoder {
   // meta_bytes_buf: buffer for extra meta bytes
   // meta_bytes_buf_size: offset to append extra meta bytes. Will be updated
   //                      if meta_bytes_buf is updated.
-  IOStatus AppendKey(const Slice& key, WritableFileWriter* file,
+  IOStatus AppendKey(const Slice& key, AbstractWritableFileWriter* file,
                      uint64_t* offset, char* meta_bytes_buf,
                      size_t* meta_bytes_buf_size);
 

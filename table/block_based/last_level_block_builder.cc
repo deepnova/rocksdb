@@ -1,37 +1,4 @@
-//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under both the GPLv2 (found in the
-//  COPYING file in the root directory) and Apache 2.0 License
-//  (found in the LICENSE.Apache file in the root directory).
-//
-// Copyright (c) 2011 The LevelDB Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-//
-// GeneralBlockBuilder generates blocks where keys are prefix-compressed:
-//
-// When we store a key, we drop the prefix shared with the previous
-// string.  This helps reduce the space requirement significantly.
-// Furthermore, once every K keys, we do not apply the prefix
-// compression and store the entire key.  We call this a "restart
-// point".  The tail end of the block stores the offsets of all of the
-// restart points, and can be used to do a binary search when looking
-// for a particular key.  Values are stored as-is (without compression)
-// immediately following the corresponding key.
-//
-// An entry for a particular key-value pair has the form:
-//     shared_bytes: varint32
-//     unshared_bytes: varint32
-//     value_length: varint32
-//     key_delta: char[unshared_bytes]
-//     value: char[value_length]
-// shared_bytes == 0 for restart points.
-//
-// The trailer of the block has the form:
-//     restarts: uint32[num_restarts]
-//     num_restarts: uint32
-// restarts[i] contains the offset within the block of the ith restart point.
-
-#include "table/block_based/block_builder.h"
+#include "table/block_based/last_level_block_builder.h"
 
 #include <assert.h>
 
@@ -42,9 +9,18 @@
 #include "table/block_based/data_block_footer.h"
 #include "util/coding.h"
 
+//#include "logging/logging.h"
+
+// parquet sample code
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <memory>
+//------------------
+
 namespace ROCKSDB_NAMESPACE {
 
-GeneralBlockBuilder::GeneralBlockBuilder(
+LastLevelBlockBuilder::LastLevelBlockBuilder(
     int block_restart_interval, bool use_delta_encoding,
     bool use_value_delta_encoding,
     BlockBasedTableOptions::DataBlockIndexType index_type,
@@ -55,6 +31,7 @@ GeneralBlockBuilder::GeneralBlockBuilder(
       restarts_(1, 0),  // First restart point is at offset 0
       counter_(0),
       finished_(false) {
+  // if parqeut file has index
   switch (index_type) {
     case BlockBasedTableOptions::kDataBlockBinarySearch:
       break;
@@ -65,11 +42,12 @@ GeneralBlockBuilder::GeneralBlockBuilder(
     default:
       assert(0);
   }
+  
   assert(block_restart_interval_ >= 1);
   estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
 }
 
-void GeneralBlockBuilder::Reset() {
+void LastLevelBlockBuilder::Reset() {
   buffer_.clear();
   restarts_.resize(1);  // First restart point is at offset 0
   assert(restarts_[0] == 0);
@@ -77,20 +55,20 @@ void GeneralBlockBuilder::Reset() {
   counter_ = 0;
   finished_ = false;
   last_key_.clear();
-  if (data_block_hash_index_builder_.Valid()) {
-    data_block_hash_index_builder_.Reset();
-  }
+  //if (data_block_hash_index_builder_.Valid()) {
+  //  data_block_hash_index_builder_.Reset();
+  //}
 #ifndef NDEBUG
   add_with_last_key_called_ = false;
 #endif
 }
 
-void GeneralBlockBuilder::SwapAndReset(std::string& buffer) {
+void LastLevelBlockBuilder::SwapAndReset(std::string& buffer) {
   std::swap(buffer_, buffer);
   Reset();
 }
 
-size_t GeneralBlockBuilder::EstimateSizeAfterKV(const Slice& key,
+size_t LastLevelBlockBuilder::EstimateSizeAfterKV(const Slice& key,
                                          const Slice& value) const {
   size_t estimate = CurrentSizeEstimate();
   // Note: this is an imprecise estimate as it accounts for the whole key size
@@ -118,13 +96,14 @@ size_t GeneralBlockBuilder::EstimateSizeAfterKV(const Slice& key,
   return estimate;
 }
 
-Slice GeneralBlockBuilder::Finish() {
+Slice LastLevelBlockBuilder::Finish() {
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
 
   uint32_t num_restarts = static_cast<uint32_t>(restarts_.size());
+
   BlockBasedTableOptions::DataBlockIndexType index_type =
       BlockBasedTableOptions::kDataBlockBinarySearch;
   if (data_block_hash_index_builder_.Valid() &&
@@ -141,7 +120,7 @@ Slice GeneralBlockBuilder::Finish() {
   return Slice(buffer_);
 }
 
-void GeneralBlockBuilder::Add(const Slice& key, const Slice& value,
+void LastLevelBlockBuilder::Add(const Slice& key, const Slice& value,
                        const Slice* const delta_value) {
   // Ensure no unsafe mixing of Add and AddWithLastKey
   assert(!add_with_last_key_called_);
@@ -155,7 +134,7 @@ void GeneralBlockBuilder::Add(const Slice& key, const Slice& value,
   }
 }
 
-void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
+void LastLevelBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
                                   const Slice& last_key_param,
                                   const Slice* const delta_value) {
   // Ensure no unsafe mixing of Add and AddWithLastKey
@@ -166,7 +145,7 @@ void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
 
   // Here we make sure to use an empty `last_key` on first call after creation
   // or Reset. This is more convenient for the caller and we can be more
-  // clever inside GeneralBlockBuilder. On this hot code path, we want to avoid
+  // clever inside LastLevelBlockBuilder. On this hot code path, we want to avoid
   // conditional jumps like `buffer_.empty() ? ... : ...` so we can use a
   // fast min operation instead, with an assertion to be sure our logic is
   // sound.
@@ -179,7 +158,7 @@ void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
   AddWithLastKeyImpl(key, value, last_key, delta_value, buffer_size);
 }
 
-inline void GeneralBlockBuilder::AddWithLastKeyImpl(const Slice& key,
+inline void LastLevelBlockBuilder::AddWithLastKeyImpl(const Slice& key,
                                              const Slice& value,
                                              const Slice& last_key,
                                              const Slice* const delta_value,
@@ -232,3 +211,4 @@ inline void GeneralBlockBuilder::AddWithLastKeyImpl(const Slice& key,
 }
 
 }  // namespace ROCKSDB_NAMESPACE
+

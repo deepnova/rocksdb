@@ -61,8 +61,8 @@ class PartitionedFilterBlockBuilder : public FullFilterBlockBuilder {
 
  private:
   // Filter data
-  BlockBuilder index_on_filter_block_builder_;  // top-level index builder
-  BlockBuilder
+  GeneralBlockBuilder index_on_filter_block_builder_;  // top-level index builder
+  GeneralBlockBuilder
       index_on_filter_block_builder_without_seq_;  // same for user keys
   struct FilterEntry {
     std::string key;

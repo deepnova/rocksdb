@@ -37,7 +37,7 @@ namespace {
 // a utility that helps writing block content to the file
 //   @offset will advance if @block_contents was successfully written.
 //   @block_handle the block handle this particular block.
-IOStatus WriteBlock(const Slice& block_contents, WritableFileWriter* file,
+IOStatus WriteBlock(const Slice& block_contents, AbstractWritableFileWriter* file,
                     uint64_t* offset, BlockHandle* block_handle) {
   block_handle->set_offset(*offset);
   block_handle->set_size(block_contents.size());
@@ -60,7 +60,7 @@ extern const uint64_t kLegacyPlainTableMagicNumber = 0x4f3418eb7a8f13b8ull;
 PlainTableBuilder::PlainTableBuilder(
     const ImmutableOptions& ioptions, const MutableCFOptions& moptions,
     const IntTblPropCollectorFactories* int_tbl_prop_collector_factories,
-    uint32_t column_family_id, int level_at_creation, WritableFileWriter* file,
+    uint32_t column_family_id, int level_at_creation, AbstractWritableFileWriter* file,
     uint32_t user_key_len, EncodingType encoding_type, size_t index_sparseness,
     uint32_t bloom_bits_per_key, const std::string& column_family_name,
     uint32_t num_probes, size_t huge_page_tlb_size, double hash_table_ratio,

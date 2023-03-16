@@ -42,7 +42,7 @@ class PlainTableBuilder : public TableBuilder {
       const ImmutableOptions& ioptions, const MutableCFOptions& moptions,
       const IntTblPropCollectorFactories* int_tbl_prop_collector_factories,
       uint32_t column_family_id, int level_at_creation,
-      WritableFileWriter* file, uint32_t user_key_size,
+      AbstractWritableFileWriter* file, uint32_t user_key_size,
       EncodingType encoding_type, size_t index_sparseness,
       uint32_t bloom_bits_per_key, const std::string& column_family_name,
       uint32_t num_probes = 6, size_t huge_page_tlb_size = 0,
@@ -109,7 +109,7 @@ class PlainTableBuilder : public TableBuilder {
   BloomBlockBuilder bloom_block_;
   std::unique_ptr<PlainTableIndexBuilder> index_builder_;
 
-  WritableFileWriter* file_;
+  AbstractWritableFileWriter* file_;
   uint64_t offset_ = 0;
   uint32_t bloom_bits_per_key_;
   size_t huge_page_tlb_size_;

@@ -26,7 +26,7 @@ struct EnvOptions;
 
 class BlockBasedTableBuilder;
 class RandomAccessFileReader;
-class WritableFileWriter;
+class AbstractWritableFileWriter;
 
 // A class used to track actual bytes written from the tail in the recent SST
 // file opens, and provide a suggestion for following open.
@@ -65,7 +65,7 @@ class BlockBasedTableFactory : public TableFactory {
 
   TableBuilder* NewTableBuilder(
       const TableBuilderOptions& table_builder_options,
-      WritableFileWriter* file) const override;
+      AbstractWritableFileWriter* file) const override;
 
   // Valdates the specified DB Options.
   Status ValidateOptions(const DBOptions& db_opts,

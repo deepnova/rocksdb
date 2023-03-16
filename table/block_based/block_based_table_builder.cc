@@ -41,7 +41,7 @@
 #include "table/block_based/block_based_table_factory.h"
 #include "table/block_based/block_based_table_reader.h"
 #include "table/block_based/block_builder.h"
-#include "table/block_based/ln_block_builder.h"
+#include "table/block_based/last_level_block_builder.h"
 #include "table/block_based/block_like_traits.h"
 #include "table/block_based/filter_block.h"
 #include "table/block_based/filter_policy_internal.h"
@@ -261,7 +261,7 @@ struct BlockBasedTableBuilder::Rep {
   const MutableCFOptions moptions;
   const BlockBasedTableOptions table_options;
   const InternalKeyComparator& internal_comparator;
-  WritableFileWriter* file;
+  AbstractWritableFileWriter* file;
   std::atomic<uint64_t> offset;
   size_t alignment;
   //std::shared_ptr<BlockBuilder> data_block;
@@ -407,7 +407,7 @@ struct BlockBasedTableBuilder::Rep {
   }
 
   Rep(const BlockBasedTableOptions& table_opt, const TableBuilderOptions& tbo,
-      WritableFileWriter* f)
+      AbstractWritableFileWriter* f)
       : ioptions(tbo.ioptions),
         moptions(tbo.moptions),
         table_options(table_opt),
@@ -442,7 +442,7 @@ struct BlockBasedTableBuilder::Rep {
     if (tbo.level_at_creation == tbo.ioptions.num_levels - 1) { // last level
         is_last_level = true;
         // parquet row group builder
-        data_block = new LnBlockBuilder(table_options.block_restart_interval,
+        data_block = new LastLevelBlockBuilder(table_options.block_restart_interval,
                    table_options.use_delta_encoding,
                    false /* use_value_delta_encoding */,
                    tbo.internal_comparator.user_comparator()
@@ -450,9 +450,9 @@ struct BlockBasedTableBuilder::Rep {
                        ? BlockBasedTableOptions::kDataBlockBinarySearch
                        : table_options.data_block_index_type,
                    table_options.data_block_hash_table_util_ratio);
-        range_del_block = new LnBlockBuilder(1);
+        range_del_block = new LastLevelBlockBuilder(1);
     } else {
-        data_block = new BlockBuilder(table_options.block_restart_interval,
+        data_block = new GeneralBlockBuilder(table_options.block_restart_interval,
                    table_options.use_delta_encoding,
                    false /* use_value_delta_encoding */,
                    tbo.internal_comparator.user_comparator()
@@ -460,10 +460,10 @@ struct BlockBasedTableBuilder::Rep {
                        ? BlockBasedTableOptions::kDataBlockBinarySearch
                        : table_options.data_block_index_type,
                    table_options.data_block_hash_table_util_ratio);
-        range_del_block = new BlockBuilder(1);
+        range_del_block = new GeneralBlockBuilder(1);
     }
     flush_block_policy = table_options.flush_block_policy_factory->NewFlushBlockPolicy(
-                table_options, (const BlockBuilder*)data_block);
+                table_options, (const GeneralBlockBuilder*)data_block);
 
     if (tbo.target_file_size == 0) {
       buffer_limit = compression_opts.max_dict_buffer_bytes;
@@ -906,7 +906,7 @@ struct BlockBasedTableBuilder::ParallelCompressionRep {
 
 BlockBasedTableBuilder::BlockBasedTableBuilder(
     const BlockBasedTableOptions& table_options, const TableBuilderOptions& tbo,
-    WritableFileWriter* file) {
+    AbstractWritableFileWriter* file) {
   BlockBasedTableOptions sanitized_table_options(table_options);
   if (sanitized_table_options.format_version == 0 &&
       sanitized_table_options.checksum != kCRC32c) {

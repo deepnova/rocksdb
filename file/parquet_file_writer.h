@@ -1,5 +1,5 @@
 #pragma once
-/*
+
 #include <atomic>
 #include <string>
 
@@ -13,7 +13,8 @@
 #include "rocksdb/rate_limiter.h"
 #include "test_util/sync_point.h"
 #include "util/aligned_buffer.h"
-*/
+#include "file/writable_file_writer.h"
+
 namespace ROCKSDB_NAMESPACE {
 class Statistics;
 class SystemClock;
@@ -25,7 +26,7 @@ class SystemClock;
 // - Flush and Sync the data to the underlying filesystem.
 // - Notify any interested listeners on the completion of a write.
 // - Update IO stats.
-class ParquetFileWriter : public WritableFileWriter {
+class ParquetFileWriter : public AbstractWritableFileWriter {
  private:
 #ifndef ROCKSDB_LITE
   void NotifyOnFileWriteFinish(
@@ -226,7 +227,7 @@ class ParquetFileWriter : public WritableFileWriter {
 
   static IOStatus Create(const std::shared_ptr<FileSystem>& fs,
                          const std::string& fname, const FileOptions& file_opts,
-                         std::unique_ptr<WritableFileWriter>* writer,
+                         std::unique_ptr<ParquetFileWriter>* writer,
                          IODebugContext* dbg);
   ParquetFileWriter(const ParquetFileWriter&) = delete;
 
@@ -306,6 +307,7 @@ class ParquetFileWriter : public WritableFileWriter {
   }
 
  private:
+/*
   // Decide the Rate Limiter priority.
   static Env::IOPriority DecideRateLimiterPriority(
       Env::IOPriority writable_file_io_priority,
@@ -324,6 +326,8 @@ class ParquetFileWriter : public WritableFileWriter {
                                      Env::IOPriority op_rate_limiter_priority);
   IOStatus RangeSync(uint64_t offset, uint64_t nbytes);
   IOStatus SyncInternal(bool use_fsync);
+*/
 };
+
 }  // namespace ROCKSDB_NAMESPACE
 

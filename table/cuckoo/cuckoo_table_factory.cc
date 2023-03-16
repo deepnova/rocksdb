@@ -31,7 +31,7 @@ Status CuckooTableFactory::NewTableReader(
 
 TableBuilder* CuckooTableFactory::NewTableBuilder(
     const TableBuilderOptions& table_builder_options,
-    WritableFileWriter* file) const {
+    AbstractWritableFileWriter* file) const {
   // TODO: change builder to take the option struct
   return new CuckooTableBuilder(
       file, table_options_.hash_table_ratio, 64,

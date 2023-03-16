@@ -26,6 +26,78 @@ namespace ROCKSDB_NAMESPACE {
 class Statistics;
 class SystemClock;
 
+class AbstractWritableFileWriter { //TODO: common code doing here
+ public:
+  AbstractWritableFileWriter(const AbstractWritableFileWriter&) = delete;
+  AbstractWritableFileWriter& operator=(const AbstractWritableFileWriter&) = delete;
+  AbstractWritableFileWriter(){} 
+  virtual ~AbstractWritableFileWriter(){}
+  
+  /*virtual static IOStatus Create(const std::shared_ptr<FileSystem>& fs,
+                         const std::string& fname, const FileOptions& file_opts,
+                         std::unique_ptr<AbstractWritableFileWriter>* writer,
+                         IODebugContext* dbg) = 0;*/
+  //WritableFileWriter(const WritableFileWriter&) = delete;
+  //WritableFileWriter& operator=(const WritableFileWriter&) = delete;
+
+  //~WritableFileWriter() {
+  //  auto s = Close();
+  //  s.PermitUncheckedError();
+  //}
+
+  virtual std::string file_name() const = 0; 
+
+  // When this Append API is called, if the crc32c_checksum is not provided, we
+  // will calculate the checksum internally.
+  virtual IOStatus Append(const Slice& data, uint32_t crc32c_checksum = 0,
+                  Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
+
+  virtual IOStatus Pad(const size_t pad_bytes,
+               Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
+
+  virtual IOStatus Flush(Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
+
+  virtual IOStatus Close() = 0;
+
+  virtual IOStatus Sync(bool use_fsync) = 0;
+
+  // Sync only the data that was already Flush()ed. Safe to call concurrently
+  // with Append() and Flush(). If !writable_file_->IsSyncThreadSafe(),
+  // returns NotSupported status.
+  virtual IOStatus SyncWithoutFlush(bool use_fsync) = 0;
+
+  virtual uint64_t GetFileSize() const = 0; 
+
+  // Returns the size of data flushed to the underlying `FSWritableFile`.
+  // Expected to match `writable_file()->GetFileSize()`.
+  // The return value can serve as a lower-bound for the amount of data synced
+  // by a future call to `SyncWithoutFlush()`.
+  virtual uint64_t GetFlushedSize() const = 0;
+
+  virtual IOStatus InvalidateCache(size_t offset, size_t length) = 0;
+
+  virtual FSWritableFile* writable_file() const = 0;
+
+  virtual bool use_direct_io() = 0;
+  virtual bool BufferIsEmpty() = 0;
+
+  virtual void TEST_SetFileChecksumGenerator(
+      FileChecksumGenerator* checksum_generator) = 0;
+
+  virtual std::string GetFileChecksum() = 0;
+
+  virtual const char* GetFileChecksumFuncName() const = 0;
+
+  virtual bool seen_error() const = 0;
+  // For options of relaxed consistency, users might hope to continue
+  // operating on the file after an error happens.
+  virtual void reset_seen_error() = 0;
+  virtual void set_seen_error() = 0;
+
+  virtual IOStatus AssertFalseAndGetStatusForPrevError() = 0;
+
+};
+
 // WritableFileWriter is a wrapper on top of Env::WritableFile. It provides
 // facilities to:
 // - Handle Buffered and Direct writes.
@@ -33,7 +105,7 @@ class SystemClock;
 // - Flush and Sync the data to the underlying filesystem.
 // - Notify any interested listeners on the completion of a write.
 // - Update IO stats.
-class WritableFileWriter {
+class WritableFileWriter : public AbstractWritableFileWriter {
  private:
 #ifndef ROCKSDB_LITE
   void NotifyOnFileWriteFinish(
@@ -231,7 +303,7 @@ class WritableFileWriter {
               checksum_gen_context);
     }
   }
-
+  
   static IOStatus Create(const std::shared_ptr<FileSystem>& fs,
                          const std::string& fname, const FileOptions& file_opts,
                          std::unique_ptr<WritableFileWriter>* writer,
@@ -240,7 +312,7 @@ class WritableFileWriter {
 
   WritableFileWriter& operator=(const WritableFileWriter&) = delete;
 
-  ~WritableFileWriter() {
+  virtual ~WritableFileWriter() {
     auto s = Close();
     s.PermitUncheckedError();
   }

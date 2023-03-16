@@ -16,29 +16,29 @@ namespace ROCKSDB_NAMESPACE {
 // parquet sample code
 using parquet::ConvertedType;
 using parquet::Repetition;
-using parquet::Type;
+//using parquet::Type;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
 constexpr int FIXED_LENGTH = 10;
 //------------------
 
-class LnBlockBuilder : public BlockBuilder {
+class LastLevelBlockBuilder : public BlockBuilder {
  public:
-  LnBlockBuilder(const LnBlockBuilder&) = delete;
-  void operator=(const LnBlockBuilder&) = delete;
+  LastLevelBlockBuilder(const LastLevelBlockBuilder&) = delete;
+  void operator=(const LastLevelBlockBuilder&) = delete;
 
-  explicit LnBlockBuilder(int block_restart_interval,
+  explicit LastLevelBlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
                         bool use_value_delta_encoding = false,
                         BlockBasedTableOptions::DataBlockIndexType index_type =
                             BlockBasedTableOptions::kDataBlockBinarySearch,
                         double data_block_hash_table_util_ratio = 0.75);
 
-  // Reset the contents as if the LnBlockBuilder was just constructed.
+  // Reset the contents as if the LastLevelBlockBuilder was just constructed.
   void Reset();
 
-  // Swap the contents in LnBlockBuilder with buffer, then reset the LnBlockBuilder.
+  // Swap the contents in LastLevelBlockBuilder with buffer, then reset the LastLevelBlockBuilder.
   void SwapAndReset(std::string& buffer);
 
   // REQUIRES: Finish() has not been called since the last call to Reset().
@@ -110,34 +110,34 @@ static std::shared_ptr<GroupNode> SetupSchema() {
   // Create a primitive node named 'boolean_field' with type:BOOLEAN,
   // repetition:REQUIRED
   fields.push_back(PrimitiveNode::Make("boolean_field", Repetition::REQUIRED,
-                                       Type::BOOLEAN, ConvertedType::NONE));
+                                       parquet::Type::BOOLEAN, ConvertedType::NONE));
 
   // Create a primitive node named 'int32_field' with type:INT32, repetition:REQUIRED,
   // logical type:TIME_MILLIS
-  fields.push_back(PrimitiveNode::Make("int32_field", Repetition::REQUIRED, Type::INT32,
+  fields.push_back(PrimitiveNode::Make("int32_field", Repetition::REQUIRED, parquet::Type::INT32,
                                        ConvertedType::TIME_MILLIS));
 
   // Create a primitive node named 'int64_field' with type:INT64, repetition:REPEATED
-  fields.push_back(PrimitiveNode::Make("int64_field", Repetition::REPEATED, Type::INT64,
+  fields.push_back(PrimitiveNode::Make("int64_field", Repetition::REPEATED, parquet::Type::INT64,
                                        ConvertedType::NONE));
 
-  fields.push_back(PrimitiveNode::Make("int96_field", Repetition::REQUIRED, Type::INT96,
+  fields.push_back(PrimitiveNode::Make("int96_field", Repetition::REQUIRED, parquet::Type::INT96,
                                        ConvertedType::NONE));
 
-  fields.push_back(PrimitiveNode::Make("float_field", Repetition::REQUIRED, Type::FLOAT,
+  fields.push_back(PrimitiveNode::Make("float_field", Repetition::REQUIRED, parquet::Type::FLOAT,
                                        ConvertedType::NONE));
 
-  fields.push_back(PrimitiveNode::Make("double_field", Repetition::REQUIRED, Type::DOUBLE,
+  fields.push_back(PrimitiveNode::Make("double_field", Repetition::REQUIRED, parquet::Type::DOUBLE,
                                        ConvertedType::NONE));
 
   // Create a primitive node named 'ba_field' with type:BYTE_ARRAY, repetition:OPTIONAL
-  fields.push_back(PrimitiveNode::Make("ba_field", Repetition::OPTIONAL, Type::BYTE_ARRAY,
+  fields.push_back(PrimitiveNode::Make("ba_field", Repetition::OPTIONAL, parquet::Type::BYTE_ARRAY,
                                        ConvertedType::NONE));
 
   // Create a primitive node named 'flba_field' with type:FIXED_LEN_BYTE_ARRAY,
   // repetition:REQUIRED, field_length = FIXED_LENGTH
   fields.push_back(PrimitiveNode::Make("flba_field", Repetition::REQUIRED,
-                                       Type::FIXED_LEN_BYTE_ARRAY, ConvertedType::NONE,
+                                       parquet::Type::FIXED_LEN_BYTE_ARRAY, ConvertedType::NONE,
                                        FIXED_LENGTH));
 
   // Create a GroupNode named 'schema' using the primitive nodes defined above

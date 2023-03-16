@@ -36,6 +36,7 @@
 #include "file/filename.h"
 #include "file/read_write_util.h"
 #include "file/sst_file_manager_impl.h"
+#include "file/parquet_file_writer.h"
 #include "file/writable_file_writer.h"
 #include "logging/log_buffer.h"
 #include "logging/logging.h"

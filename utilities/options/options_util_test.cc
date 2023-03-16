@@ -178,7 +178,7 @@ class DummyTableFactory : public TableFactory {
 
   TableBuilder* NewTableBuilder(
       const TableBuilderOptions& /*table_builder_options*/,
-      WritableFileWriter* /*file*/) const override {
+      AbstractWritableFileWriter* /*file*/) const override {
     return nullptr;
   }
 

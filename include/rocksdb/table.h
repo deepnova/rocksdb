@@ -41,7 +41,7 @@ struct TableBuilderOptions;
 class TableBuilder;
 class TableFactory;
 class TableReader;
-class WritableFileWriter;
+class AbstractWritableFileWriter;
 struct ConfigOptions;
 struct EnvOptions;
 
@@ -913,7 +913,7 @@ class TableFactory : public Customizable {
   // to use in this table.
   virtual TableBuilder* NewTableBuilder(
       const TableBuilderOptions& table_builder_options,
-      WritableFileWriter* file) const = 0;
+      AbstractWritableFileWriter* file) const = 0;
 
   // Return is delete range supported
   virtual bool IsDeleteRangeSupported() const { return false; }

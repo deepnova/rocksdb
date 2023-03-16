@@ -46,7 +46,7 @@ namespace ROCKSDB_NAMESPACE {
 class TableFactory;
 
 TableBuilder* NewTableBuilder(const TableBuilderOptions& tboptions,
-                              WritableFileWriter* file) {
+                              AbstractWritableFileWriter* file) {
   assert((tboptions.column_family_id ==
           TablePropertiesCollectorFactory::Context::kUnknownColumnFamily) ==
          tboptions.column_family_name.empty());

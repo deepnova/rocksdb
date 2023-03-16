@@ -72,7 +72,7 @@ Status PlainTableFactory::NewTableReader(
 
 TableBuilder* PlainTableFactory::NewTableBuilder(
     const TableBuilderOptions& table_builder_options,
-    WritableFileWriter* file) const {
+    AbstractWritableFileWriter* file) const {
   // Ignore the skip_filters flag. PlainTable format is optimized for small
   // in-memory dbs. The skip_filters optimization is not useful for plain
   // tables

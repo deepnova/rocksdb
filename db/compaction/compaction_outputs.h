@@ -58,8 +58,8 @@ class CompactionOutputs {
   // Set new table builder for the current output
   void NewBuilder(const TableBuilderOptions& tboptions);
 
-  // Assign a new WritableFileWriter to the current output
-  void AssignFileWriter(WritableFileWriter* writer) {
+  // Assign a new AbstractWritableFileWriter to the current output
+  void AssignFileWriter(AbstractWritableFileWriter* writer) {
     file_writer_.reset(writer);
   }
 
@@ -284,7 +284,7 @@ class CompactionOutputs {
 
   // current output builder and writer
   std::unique_ptr<TableBuilder> builder_;
-  std::unique_ptr<WritableFileWriter> file_writer_;
+  std::unique_ptr<AbstractWritableFileWriter> file_writer_;
   uint64_t current_output_file_size_ = 0;
 
   // all the compaction outputs so far

@@ -23,17 +23,67 @@ class BlockBuilder {
   BlockBuilder(const BlockBuilder&) = delete;
   void operator=(const BlockBuilder&) = delete;
 
-  explicit BlockBuilder(int block_restart_interval,
+  BlockBuilder(){}
+  virtual ~BlockBuilder(){}
+
+  // Reset the contents as if the BlockBuilder was just constructed.
+  virtual void Reset() = 0;
+
+  // Swap the contents in BlockBuilder with buffer, then reset the BlockBuilder.
+  virtual void SwapAndReset(std::string& buffer) = 0;
+
+  // REQUIRES: Finish() has not been called since the last call to Reset().
+  // REQUIRES: key is larger than any previously added key
+  // DO NOT mix with AddWithLastKey() between Resets. For efficiency, use
+  // AddWithLastKey() in contexts where previous added key is already known
+  // and delta encoding might be used.
+  virtual void Add(const Slice& key, const Slice& value,
+           const Slice* const delta_value = nullptr) = 0;
+
+  // A faster version of Add() if the previous key is already known for all
+  // Add()s.
+  // REQUIRES: Finish() has not been called since the last call to Reset().
+  // REQUIRES: key is larger than any previously added key
+  // REQUIRES: if AddWithLastKey has been called since last Reset(), last_key
+  // is the key from most recent AddWithLastKey. (For convenience, last_key
+  // is ignored on first call after creation or Reset().)
+  // DO NOT mix with Add() between Resets.
+  virtual void AddWithLastKey(const Slice& key, const Slice& value,
+                      const Slice& last_key,
+                      const Slice* const delta_value = nullptr) = 0;
+
+  // Finish building the block and return a slice that refers to the
+  // block contents.  The returned slice will remain valid for the
+  // lifetime of this builder or until Reset() is called.
+  virtual Slice Finish() = 0;
+
+  // Returns an estimate of the current (uncompressed) size of the block
+  // we are building.
+  virtual inline size_t CurrentSizeEstimate() const = 0;
+
+  // Returns an estimated block size after appending key and value.
+  virtual size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const = 0;
+
+  // Return true iff no entries have been added since the last Reset()
+  virtual bool empty() const = 0;
+};
+
+class GeneralBlockBuilder : public BlockBuilder {
+ public:
+  GeneralBlockBuilder(const GeneralBlockBuilder&) = delete;
+  void operator=(const GeneralBlockBuilder&) = delete;
+
+  explicit GeneralBlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
                         bool use_value_delta_encoding = false,
                         BlockBasedTableOptions::DataBlockIndexType index_type =
                             BlockBasedTableOptions::kDataBlockBinarySearch,
                         double data_block_hash_table_util_ratio = 0.75);
 
-  // Reset the contents as if the BlockBuilder was just constructed.
+  // Reset the contents as if the GeneralBlockBuilder was just constructed.
   void Reset();
 
-  // Swap the contents in BlockBuilder with buffer, then reset the BlockBuilder.
+  // Swap the contents in GeneralBlockBuilder with buffer, then reset the GeneralBlockBuilder.
   void SwapAndReset(std::string& buffer);
 
   // REQUIRES: Finish() has not been called since the last call to Reset().

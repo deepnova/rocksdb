@@ -59,7 +59,7 @@ class MockTableFactory : public TableFactory {
       bool prefetch_index_and_filter_in_cache = true) const override;
   TableBuilder* NewTableBuilder(
       const TableBuilderOptions& table_builder_options,
-      WritableFileWriter* file) const override;
+      AbstractWritableFileWriter* file) const override;
 
   // This function will directly create mock table instead of going through
   // MockTableBuilder. file_contents has to have a format of <internal_key,
@@ -80,7 +80,7 @@ class MockTableFactory : public TableFactory {
   void AssertLatestFiles(const std::vector<KVVector>& files_contents);
 
  private:
-  Status GetAndWriteNextID(WritableFileWriter* file, uint32_t* id) const;
+  Status GetAndWriteNextID(AbstractWritableFileWriter* file, uint32_t* id) const;
   Status GetIDFromFile(RandomAccessFileReader* file, uint32_t* id) const;
 
   mutable MockTableFileSystem file_system_;
