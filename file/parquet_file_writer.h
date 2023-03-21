@@ -131,7 +131,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   std::string file_name_;
   FSWritableFilePtr writable_file_;
   SystemClock* clock_;
-  AlignedBuffer buf_;
+  //AlignedBuffer buf_;
   size_t max_buffer_size_;
   // Actually written data size can be used for truncate
   // not counting padding data
@@ -157,8 +157,8 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   RateLimiter* rate_limiter_;
   Statistics* stats_;
   std::vector<std::shared_ptr<EventListener>> listeners_;
-  std::unique_ptr<FileChecksumGenerator> checksum_generator_;
-  bool checksum_finalized_;
+  //std::unique_ptr<FileChecksumGenerator> checksum_generator_;
+  //bool checksum_finalized_;
   bool perform_data_verification_;
   uint32_t buffered_data_crc32c_checksum_;
   bool buffered_data_with_checksum_;

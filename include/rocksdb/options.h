@@ -62,6 +62,8 @@ struct DbPath;
 
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
+typedef std::string (*GetSchemaCallBack)(std::string); //TODO: not found the usage of std::function 
+
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
   // versions are supported.
@@ -340,6 +342,12 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   explicit ColumnFamilyOptions(const Options& options);
 
   void Dump(Logger* log) const;
+
+  GetSchemaCallBack* get_schema_callback_; //TODO: not consider schema evolution
+
+  GetSchema(){
+
+  }
 };
 
 enum class WALRecoveryMode : char {
@@ -1401,6 +1409,8 @@ struct DBOptions {
   // of the contract leads to undefined behaviors with high possibility of data
   // inconsistency, e.g. deleted old data become visible again, etc.
   bool enforce_single_del_contracts = true;
+
+
 };
 
 // Options to control the behavior of a database (passed to DB::Open)

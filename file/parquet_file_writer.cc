@@ -25,7 +25,7 @@ IOStatus ParquetFileWriter::Create(const std::shared_ptr<FileSystem>& fs,
 
 IOStatus ParquetFileWriter::Append(const Slice& data, uint32_t crc32c_checksum,
                                     Env::IOPriority op_rate_limiter_priority) {
-  if (seen_error()) {
+  if (seen_error()) { //TODO: ???
     return AssertFalseAndGetStatusForPrevError();
   }
 
@@ -168,37 +168,46 @@ IOStatus ParquetFileWriter::Close() {
 }
 
 IOStatus ParquetFileWriter::Sync(bool use_fsync) {
-  if(use_fsync == false) return AssertFalseAndGetStatusForPrevError(); // for passing compile
+  //if(use_fsync == false) return AssertFalseAndGetStatusForPrevError(); // for passing compile
+  // do nothing for S3
   return IOStatus::OK();
 }
 
 IOStatus ParquetFileWriter::SyncWithoutFlush(bool use_fsync) {
-  if(use_fsync == false) return AssertFalseAndGetStatusForPrevError(); // for passing compile
+  //if(use_fsync == false) return AssertFalseAndGetStatusForPrevError(); // for passing compile
+  // do nothing for S3
   return IOStatus::OK();
 }
 
 std::string ParquetFileWriter::GetFileChecksum() {
-  if (checksum_generator_ != nullptr) {
-    assert(checksum_finalized_);
-    return checksum_generator_->GetChecksum();
-  } else {
-    return kUnknownFileChecksum;
-  }
+  //TODO: There must be?
+  return kUnknownFileChecksum;
 }
 
 const char* ParquetFileWriter::GetFileChecksumFuncName() const {
-  if (checksum_generator_ != nullptr) {
-    return checksum_generator_->Name();
-  } else {
-    return kUnknownFileChecksumFuncName;
-  }
+  //TODO: There must be?
+  return kUnknownFileChecksumFuncName;
 }
 
 IOStatus ParquetFileWriter::Pad(const size_t pad_bytes,
                                 Env::IOPriority op_rate_limiter_priority) {
-  IOStatus s;
-  if(pad_bytes > 0) s = Flush(op_rate_limiter_priority); //TODO: for passing compile
-  return s;
+  return IOStatus::NotSupported();
+}
+
+void ParquetFileWriter::UpdateFileChecksum(const Slice& data) {
+  //TODO: There must be?
+}
+
+// Currently, crc32c checksum is used to calculate the checksum value of the
+// content in the input buffer for handoff. In the future, the checksum might be
+// calculated from the existing crc32c checksums of the in WAl and Manifest
+// records, or even SST file blocks.
+// TODO: effectively use the existing checksum of the data being writing to
+// generate the crc32c checksum instead of a raw calculation.
+void WritableFileWriter::Crc32cHandoffChecksumCalculation(const char* data,
+                                                          size_t size,
+                                                          char* buf) {
+  //TODO: There must be?
 }
 
 }

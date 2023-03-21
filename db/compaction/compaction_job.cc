@@ -1785,7 +1785,14 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
   fo_copy.temperature = temperature;
 
   Status s;
-  IOStatus io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
+  IOStatus io_s;
+  if(sub_compact->compaction->is_last_level()) {
+    //TODO: get schema by ColumnFamilyData::name !!!
+    std::string schema_json = cfd->initial_cf_options()->get_schema_callback_(cfd->GetName()); //TODO: may not good
+    io_s = NewWritableFile(s3_fs_.get(), fname, &writable_file, fo_copy);
+  }else{
+    io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
+  }
   s = io_s;
   if (sub_compact->io_status.ok()) {
     sub_compact->io_status = io_s;
