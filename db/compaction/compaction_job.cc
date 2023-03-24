@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 
+#include <avro/Compiler.hh>
+
 #include "db/blob/blob_counting_iterator.h"
 #include "db/blob/blob_file_addition.h"
 #include "db/blob/blob_file_builder.h"
@@ -163,6 +165,7 @@ CompactionJob::CompactionJob(
       env_(db_options.env),
       io_tracer_(io_tracer),
       fs_(db_options.fs, io_tracer),
+      last_level_fs_(db_options.fs, io_tracer),
       file_options_for_read_(
           fs_->OptimizeForCompactionTableRead(file_options, db_options_)),
       versions_(versions),
@@ -1787,9 +1790,7 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
   Status s;
   IOStatus io_s;
   if(sub_compact->compaction->is_last_level()) {
-    //TODO: get schema by ColumnFamilyData::name !!!
-    std::string schema_json = cfd->initial_cf_options()->get_schema_callback_(cfd->GetName()); //TODO: may not good
-    io_s = NewWritableFile(s3_fs_.get(), fname, &writable_file, fo_copy);
+    io_s = NewWritableFile(last_level_fs_.get(), fname, &writable_file, fo_copy);
   }else{
     io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
   }
@@ -1877,10 +1878,15 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
       sub_compact->compaction->immutable_options()->listeners;
 
   if(sub_compact->compaction->is_last_level()) {
-    outputs.AssignFileWriter(new ParquetFileWriter(
+    ParquetFileWriter *fwriter = new ParquetFileWriter(
         std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
         db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
-        tmp_set.Contains(FileType::kTableFile), false));
+        tmp_set.Contains(FileType::kTableFile), false);
+    //TODO: cfd->initial_cf_options() is const and it a copy, the current getting schema method is not the best.
+    //      has take out the 'const'.
+    const avro::ValidSchema* schema = cfd->initial_cf_options().GetSchema(cfd->GetName());
+    fwriter->SetSchema(schema);
+    outputs.AssignFileWriter(fwriter);
   } else {
     outputs.AssignFileWriter(new WritableFileWriter(
         std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,

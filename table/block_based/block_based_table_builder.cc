@@ -55,6 +55,7 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 #include "util/work_queue.h"
+#include "file/parquet_file_writer.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -451,6 +452,11 @@ struct BlockBasedTableBuilder::Rep {
                        : table_options.data_block_index_type,
                    table_options.data_block_hash_table_util_ratio);
         range_del_block = new LastLevelBlockBuilder(1);
+        ParquetFileWriter* fwriter = static_cast<ParquetFileWriter*>(f);
+        LastLevelBlockBuilder* last_level_data_block = static_cast<LastLevelBlockBuilder*>(data_block);
+        last_level_data_block->SetSchema(fwriter->GetSchema());
+        LastLevelBlockBuilder* last_level_del_block = static_cast<LastLevelBlockBuilder*>(range_del_block);
+        last_level_del_block->SetSchema(fwriter->GetSchema());
     } else {
         data_block = new GeneralBlockBuilder(table_options.block_restart_interval,
                    table_options.use_delta_encoding,

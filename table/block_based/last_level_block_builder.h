@@ -5,6 +5,8 @@
 #include "rocksdb/table.h"
 #include "table/block_based/block_builder.h"
 
+#include <avro/ValidSchema.hh>
+
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
@@ -80,6 +82,13 @@ class LastLevelBlockBuilder : public BlockBuilder {
   // Return true iff no entries have been added since the last Reset()
   bool empty() const { return buffer_.empty(); }
 
+  void SetSchema(const avro::ValidSchema *schema) {
+    schema_ptr_ = schema;
+  }
+  //const avro::ValidSchema* GetSchema() { // needless
+  //  return schema_ptr_;
+  //}
+
  private:
   inline void AddWithLastKeyImpl(const Slice& key, const Slice& value,
                                  const Slice& last_key,
@@ -102,49 +111,7 @@ class LastLevelBlockBuilder : public BlockBuilder {
 #ifndef NDEBUG
   bool add_with_last_key_called_ = false;
 #endif
+  const avro::ValidSchema *schema_ptr_;
 };
-
-// parquet sample code
-static std::shared_ptr<GroupNode> SetupSchema() {
-  parquet::schema::NodeVector fields;
-  // Create a primitive node named 'boolean_field' with type:BOOLEAN,
-  // repetition:REQUIRED
-  fields.push_back(PrimitiveNode::Make("boolean_field", Repetition::REQUIRED,
-                                       parquet::Type::BOOLEAN, ConvertedType::NONE));
-
-  // Create a primitive node named 'int32_field' with type:INT32, repetition:REQUIRED,
-  // logical type:TIME_MILLIS
-  fields.push_back(PrimitiveNode::Make("int32_field", Repetition::REQUIRED, parquet::Type::INT32,
-                                       ConvertedType::TIME_MILLIS));
-
-  // Create a primitive node named 'int64_field' with type:INT64, repetition:REPEATED
-  fields.push_back(PrimitiveNode::Make("int64_field", Repetition::REPEATED, parquet::Type::INT64,
-                                       ConvertedType::NONE));
-
-  fields.push_back(PrimitiveNode::Make("int96_field", Repetition::REQUIRED, parquet::Type::INT96,
-                                       ConvertedType::NONE));
-
-  fields.push_back(PrimitiveNode::Make("float_field", Repetition::REQUIRED, parquet::Type::FLOAT,
-                                       ConvertedType::NONE));
-
-  fields.push_back(PrimitiveNode::Make("double_field", Repetition::REQUIRED, parquet::Type::DOUBLE,
-                                       ConvertedType::NONE));
-
-  // Create a primitive node named 'ba_field' with type:BYTE_ARRAY, repetition:OPTIONAL
-  fields.push_back(PrimitiveNode::Make("ba_field", Repetition::OPTIONAL, parquet::Type::BYTE_ARRAY,
-                                       ConvertedType::NONE));
-
-  // Create a primitive node named 'flba_field' with type:FIXED_LEN_BYTE_ARRAY,
-  // repetition:REQUIRED, field_length = FIXED_LENGTH
-  fields.push_back(PrimitiveNode::Make("flba_field", Repetition::REQUIRED,
-                                       parquet::Type::FIXED_LEN_BYTE_ARRAY, ConvertedType::NONE,
-                                       FIXED_LENGTH));
-
-  // Create a GroupNode named 'schema' using the primitive nodes defined above
-  // This GroupNode is the root node of the schema tree
-  return std::static_pointer_cast<GroupNode>(
-      GroupNode::Make("schema", Repetition::REQUIRED, fields));
-}
-//------------------
 
 } // namespace ROCKSDB_NAMESPACE

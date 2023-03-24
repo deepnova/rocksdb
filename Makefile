@@ -1634,6 +1634,9 @@ compaction_service_test: $(OBJ_DIR)/db/compaction/compaction_service_test.o $(TE
 sst_partitioner_test: $(OBJ_DIR)/db/compaction/sst_partitioner_test.o $(TEST_LIBRARY) $(LIBRARY)
 	$(AM_LINK)
 
+avro_test: $(OBJ_DIR)/table/block_based/avro_test.o $(TEST_LIBRARY) $(LIBRARY)
+	$(AM_LINK)
+
 compact_on_deletion_collector_test: $(OBJ_DIR)/utilities/table_properties_collectors/compact_on_deletion_collector_test.o $(TEST_LIBRARY) $(LIBRARY)
 	$(AM_LINK)
 

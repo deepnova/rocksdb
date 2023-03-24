@@ -846,9 +846,10 @@ if [ "$USE_FOLLY" ]; then
   fi
 fi
 
-ARROW_PATH=/usr/local/arrow-20230314
-PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS $ARROW_PATH/lib/libparquet.so $ARROW_PATH/lib/libarrow.so"
-#PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS -lparquet -larrow" # why can't find
+#ARROW_PATH=/usr/local/arrow-20230314
+#PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS $ARROW_PATH/lib/libparquet.so $ARROW_PATH/lib/libarrow.so"
+PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS -lparquet -larrow" # why can't find
+PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS -lavrocpp -larrow" # why can't find
 
 PLATFORM_CCFLAGS="$PLATFORM_CCFLAGS $COMMON_FLAGS"
 PLATFORM_CXXFLAGS="$PLATFORM_CXXFLAGS $COMMON_FLAGS"

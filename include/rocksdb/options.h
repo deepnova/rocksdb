@@ -17,6 +17,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <avro/ValidSchema.hh>
+#include <avro/Compiler.hh>
+
 #include "rocksdb/advanced_options.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/compression_type.h"
@@ -343,11 +346,22 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
 
   void Dump(Logger* log) const;
 
-  GetSchemaCallBack* get_schema_callback_; //TODO: not consider schema evolution
+  GetSchemaCallBack get_schema_callback_ = nullptr; //TODO: not consider schema evolution
+  avro::ValidSchema schema_;
 
-  GetSchema(){
-
+  const avro::ValidSchema* GetSchema(const std::string &cfName) {
+    if(schema_.root()) return &schema_;
+    if(get_schema_callback_ == nullptr) return nullptr;
+    std::string schemaJson = get_schema_callback_(cfName);
+    //try{
+      schema_ = avro::compileJsonSchemaFromString(schemaJson); //TODO: exception handling
+    //}catch(std::exception e){
+    //  std::cerr << "avro compile schema exception: " << e.what() << std::endl;
+    //  return nullptr;
+    //}
+    return &schema_;
   }
+
 };
 
 enum class WALRecoveryMode : char {

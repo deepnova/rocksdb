@@ -3,6 +3,8 @@
 #include <atomic>
 #include <string>
 
+#include <avro/Compiler.hh>
+
 #include "db/version_edit.h"
 #include "env/file_system_tracer.h"
 #include "port/port.h"
@@ -157,7 +159,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   RateLimiter* rate_limiter_;
   Statistics* stats_;
   std::vector<std::shared_ptr<EventListener>> listeners_;
-  //std::unique_ptr<FileChecksumGenerator> checksum_generator_;
+  std::unique_ptr<FileChecksumGenerator> checksum_generator_;
   //bool checksum_finalized_;
   bool perform_data_verification_;
   uint32_t buffered_data_crc32c_checksum_;
@@ -179,7 +181,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
       : file_name_(_file_name),
         writable_file_(std::move(file), io_tracer, _file_name),
         clock_(clock),
-        buf_(),
+        //buf_(),
         max_buffer_size_(options.writable_file_max_buffer_size),
         filesize_(0),
         flushed_size_(0),
@@ -194,7 +196,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
         stats_(stats),
         listeners_(),
         checksum_generator_(nullptr),
-        checksum_finalized_(false),
+        //checksum_finalized_(false),
         perform_data_verification_(perform_data_verification),
         buffered_data_crc32c_checksum_(0),
         buffered_data_with_checksum_(buffered_data_with_checksum) {
@@ -204,8 +206,8 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
     assert(!use_direct_io() || max_buffer_size_ > 0);
     TEST_SYNC_POINT_CALLBACK("ParquetFileWriter::ParquetFileWriter:0",
                              reinterpret_cast<void*>(max_buffer_size_));
-    buf_.Alignment(writable_file_->GetRequiredBufferAlignment());
-    buf_.AllocateNewBuffer(std::min((size_t)65536, max_buffer_size_));
+    //buf_.Alignment(writable_file_->GetRequiredBufferAlignment());
+    //buf_.AllocateNewBuffer(std::min((size_t)65536, max_buffer_size_));
 #ifndef ROCKSDB_LITE
     std::for_each(listeners.begin(), listeners.end(),
                   [this](const std::shared_ptr<EventListener>& e) {
@@ -279,7 +281,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
 
   bool use_direct_io() { return writable_file_->use_direct_io(); }
 
-  bool BufferIsEmpty() { return buf_.CurrentSize() == 0; }
+  bool BufferIsEmpty() { return false; }
 
   void TEST_SetFileChecksumGenerator(
       FileChecksumGenerator* checksum_generator) {
@@ -306,7 +308,15 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
     return IOStatus::IOError("Writer has previous error.");
   }
 
+  void SetSchema(const avro::ValidSchema *schema) {
+    schema_ptr_ = schema;
+  }
+  const avro::ValidSchema* GetSchema() {
+    return schema_ptr_;
+  }
+
  private:
+   const avro::ValidSchema *schema_ptr_;
 /*
   // Decide the Rate Limiter priority.
   static Env::IOPriority DecideRateLimiterPriority(
