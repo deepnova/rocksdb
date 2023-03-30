@@ -25,7 +25,7 @@ IOStatus ParquetFileWriter::Create(const std::shared_ptr<FileSystem>& fs,
 
 IOStatus ParquetFileWriter::Append(const Slice& data, uint32_t crc32c_checksum,
                                     Env::IOPriority op_rate_limiter_priority) {
-  if (seen_error()) { //TODO: ???
+  if (seen_error()) { //Tarim-TODO: ???
     return AssertFalseAndGetStatusForPrevError();
   }
 
@@ -165,7 +165,7 @@ IOStatus ParquetFileWriter::Append(const Slice& data, uint32_t crc32c_checksum,
 }
 
 IOStatus ParquetFileWriter::Flush(Env::IOPriority op_rate_limiter_priority) {
-  if(op_rate_limiter_priority == Env::IO_MID) return AssertFalseAndGetStatusForPrevError(); //TODO: for passing compile
+  if(op_rate_limiter_priority == Env::IO_MID) return AssertFalseAndGetStatusForPrevError(); //Tarim-TODO: for passing compile
   return IOStatus::OK();
 }
 
@@ -186,12 +186,12 @@ IOStatus ParquetFileWriter::SyncWithoutFlush(bool use_fsync) {
 }
 
 std::string ParquetFileWriter::GetFileChecksum() {
-  //TODO: There must be?
+  //Tarim-TODO: There must be?
   return kUnknownFileChecksum;
 }
 
 const char* ParquetFileWriter::GetFileChecksumFuncName() const {
-  //TODO: There must be?
+  //Tarim-TODO: There must be?
   return kUnknownFileChecksumFuncName;
 }
 
@@ -202,7 +202,7 @@ IOStatus ParquetFileWriter::Pad(const size_t pad_bytes,
 }
 
 void ParquetFileWriter::UpdateFileChecksum(const Slice& data) {
-  //TODO: There must be?
+  //Tarim-TODO: There must be?
   if(data.data() == nullptr) return ; // for compile passing
 }
 
@@ -215,7 +215,7 @@ void ParquetFileWriter::UpdateFileChecksum(const Slice& data) {
 void WritableFileWriter::Crc32cHandoffChecksumCalculation(const char* data,
                                                           size_t size,
                                                           char* buf) {
-  //TODO: There must be?
+  //Tarim-TODO: There must be?
   if(data == nullptr || size == 0 || buf == nullptr) return ; // for compile passing
 }
 

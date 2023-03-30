@@ -20,7 +20,7 @@ class SstPartitionerSeparatorPrefix : public SstPartitioner {
 
   const char* Name() const override { return "SstPartitionerSeparatorPrefix"; }
 
-  PartitionerResult ShouldPartition(const PartitionerRequest& request) override { //TODO: last two level
+  PartitionerResult ShouldPartition(const PartitionerRequest& request) override { //Tarim-TODO: last two level
     if(request.current_output_file_size > max_size_) return kRequired;
     const static size_t MAX_BUF_SIZE = 128; 
     char last_key[MAX_BUF_SIZE] = {0}, current_key[MAX_BUF_SIZE] = {0};

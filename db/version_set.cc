@@ -6505,7 +6505,7 @@ InternalIterator* VersionSet::MakeInputIterator(
               /*largest_compaction_key=*/nullptr,
               /*allow_unprepared_value=*/false);
         }
-      } else {
+      } else { //Tarim-TODO: last LastLevelIterator
         // Create concatenating iterator for the files from this level
         list[num++] = new LevelIterator(
             cfd->table_cache(), read_options, file_options_compactions,

@@ -26,7 +26,7 @@ namespace ROCKSDB_NAMESPACE {
 class Statistics;
 class SystemClock;
 
-class AbstractWritableFileWriter { //TODO: common code doing here
+class AbstractWritableFileWriter { //Tarim-TODO: common code doing here
  public:
   AbstractWritableFileWriter(const AbstractWritableFileWriter&) = delete;
   AbstractWritableFileWriter& operator=(const AbstractWritableFileWriter&) = delete;

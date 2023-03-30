@@ -7,7 +7,7 @@ namespace ROCKSDB_NAMESPACE {
 
 using namespace arrow::fs;
 
-//TODO: not implement all API, call 'arrow::fs::parquet::ParquetFileWriter' directly
+//Tarim-TODO: not implement all API, call 'arrow::fs::parquet::ParquetFileWriter' directly
 class S3WritableFile : public FSWritableFile {
  protected:
   const std::string filename_;
@@ -79,7 +79,7 @@ class S3WritableFile : public FSWritableFile {
 class S3SequentialFile : public FSSequentialFile {
  private:
   std::string filename_;
-  //FILE* file_; //TODO: S3 handler
+  //FILE* file_; //Tarim-TODO: S3 handler
   //int fd_;
 
  public:

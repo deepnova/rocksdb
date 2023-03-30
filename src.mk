@@ -197,6 +197,7 @@ LIB_SOURCES =                                                   \
   table/format.cc                                               \
   table/get_context.cc                                          \
   table/iterator.cc                                             \
+  table/last_level_iterator.cc									\
   table/merging_iterator.cc                                     \
   table/meta_blocks.cc                                          \
   table/persistent_cache_helper.cc                              \

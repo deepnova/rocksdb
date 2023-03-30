@@ -1882,8 +1882,8 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
         std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
         db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
         tmp_set.Contains(FileType::kTableFile), false);
-    //TODO: cfd->initial_cf_options() is const and it a copy, the current getting schema method is not the best.
-    //      has take out the 'const'.
+    //Tarim-TODO: cfd->initial_cf_options() is const and it a copy, the current getting schema method is not the best.
+    //            and has take out the 'const'.
     const avro::ValidSchema* schema = cfd->initial_cf_options().GetSchema(cfd->GetName());
     fwriter->SetSchema(schema);
     outputs.AssignFileWriter(fwriter);

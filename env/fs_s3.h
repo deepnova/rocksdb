@@ -38,8 +38,8 @@ class ShortRetryStrategy : public arrow::fs::S3RetryStrategy {
 #endif
 };
 
-//TODO: use arrow::fs::S3FileSystem directly?
-//TODO: if need support HDFS..., add an extra layer abstraction.
+//Tarim-TODO: use arrow::fs::S3FileSystem directly?
+//Tarim-TODO: if need support HDFS..., add an extra layer abstraction.
 class S3FileSystem : public FileSystem {
  public:
   S3FileSystem(const std::string endpoint,
@@ -49,7 +49,7 @@ class S3FileSystem : public FileSystem {
             access_key_(access_key),
             secret_key_(secret_key) {
     S3GlobalOptions options;
-    options.log_level = S3LogLevel::Warn; //TODO: configurable
+    options.log_level = S3LogLevel::Warn; //Tarim-TODO: configurable
     InitializeS3(options);
     S3Connect();
   }
@@ -75,7 +75,7 @@ class S3FileSystem : public FileSystem {
                              std::unique_ptr<FSSequentialFile>* result,
                              IODebugContext* /*dbg*/) override {
     result->reset();
-    //TODO: not understand what it's for.
+    //Tarim-TODO: not understand what it's for.
     return IOStatus::OK();
   }
 
@@ -85,7 +85,7 @@ class S3FileSystem : public FileSystem {
                                IODebugContext* /*dbg*/) override {
     result->reset();
     IOStatus s = IOStatus::OK();
-    //TODO: not understand what it's for.
+    //Tarim-TODO: not understand what it's for.
     return s;
   }
 
@@ -99,7 +99,7 @@ class S3FileSystem : public FileSystem {
     if(reopen == true){
       return IOStatus::NotSupported("S3 object not supported re-open.");
     }
-    //TODO: schema
+    //Tarim-TODO: schema
     
     auto&& res2 = fs_->OpenOutputStream(fname);
     std::cout << "S3 OpenOutputStream status: " << result.status() << std::endl;
@@ -111,7 +111,7 @@ class S3FileSystem : public FileSystem {
 
     // Add writer properties
     parquet::WriterProperties::Builder builder;
-    builder.compression(parquet::Compression::SNAPPY); //TODO: configurable
+    builder.compression(parquet::Compression::SNAPPY); //Tarim-TODO: configurable
     std::shared_ptr<parquet::WriterProperties> props = builder.build();
     
         parquet::ParquetFileWriter::Open(out_file_, schema_, props);
@@ -141,54 +141,54 @@ class S3FileSystem : public FileSystem {
                              const FileOptions& options,
                              std::unique_ptr<FSWritableFile>* result,
                              IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus NewRandomRWFile(const std::string& fname, const FileOptions& options,
                            std::unique_ptr<FSRandomRWFile>* result,
                            IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus NewMemoryMappedFileBuffer(
       const std::string& fname,
       std::unique_ptr<MemoryMappedFileBuffer>* result) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus NewDirectory(const std::string& name, const IOOptions& /*opts*/,
                         std::unique_ptr<FSDirectory>* result,
                         IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus FileExists(const std::string& fname, const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus GetChildren(const std::string& dir, const IOOptions& opts,
                        std::vector<std::string>* result,
                        IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus DeleteFile(const std::string& fname, const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
     IOStatus result;
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 
   IOStatus CreateDir(const std::string& name, const IOOptions& /*opts*/,
                      IODebugContext* /*dbg*/) override {
-    //TODO: ???
+    //Tarim-TODO: ???
     return IOStatus::NotSupported();
   }
 

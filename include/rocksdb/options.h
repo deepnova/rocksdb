@@ -65,7 +65,7 @@ struct DbPath;
 
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
-typedef std::string (*GetSchemaCallBack)(std::string); //TODO: not found the usage of std::function 
+typedef std::string (*GetSchemaCallBack)(std::string); //Tarim-TODO: not found the usage of std::function in JNI
 
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
@@ -346,19 +346,14 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
 
   void Dump(Logger* log) const;
 
-  GetSchemaCallBack get_schema_callback_ = nullptr; //TODO: not consider schema evolution
+  GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
   avro::ValidSchema schema_;
 
   const avro::ValidSchema* GetSchema(const std::string &cfName) {
     if(schema_.root()) return &schema_;
     if(get_schema_callback_ == nullptr) return nullptr;
     std::string schemaJson = get_schema_callback_(cfName);
-    //try{
-      schema_ = avro::compileJsonSchemaFromString(schemaJson); //TODO: exception handling
-    //}catch(std::exception e){
-    //  std::cerr << "avro compile schema exception: " << e.what() << std::endl;
-    //  return nullptr;
-    //}
+    schema_ = avro::compileJsonSchemaFromString(schemaJson); //Tarim-TODO: exception handling
     return &schema_;
   }
 

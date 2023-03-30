@@ -1,5 +1,17 @@
 #pragma once
 
+#include "table/internal_iterator.h"
+#include "table/iterator_wrapper.h"
+#include "options/options_helper.h"
+#include "db/dbformat.h"
+#include "db/table_cache.h"
+#include "db/version_edit_handler.h"
+#include "monitoring/file_read_sample.h"
+
+#include "rocksdb/slice.h"
+
+namespace ROCKSDB_NAMESPACE {
+
 class LastLevelIterator final : public InternalIterator {
  public:
   // @param read_options Must outlive this iterator.
@@ -254,3 +266,5 @@ class LastLevelIterator final : public InternalIterator {
   // will not move to next file when this flag is set.
   bool prefix_exhausted_ = false;
 };
+
+}
