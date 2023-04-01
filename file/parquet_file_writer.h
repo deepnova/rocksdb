@@ -4,6 +4,9 @@
 #include <string>
 
 #include <avro/Compiler.hh>
+//#include <arrow/filesystem/filesystem.h>
+//#include <arrow/filesystem/s3fs.h>
+#include <parquet/api/writer.h>
 
 #include "db/version_edit.h"
 #include "env/file_system_tracer.h"
@@ -133,17 +136,18 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   std::string file_name_;
   FSWritableFilePtr writable_file_;
   SystemClock* clock_;
-  //AlignedBuffer buf_;
+  std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
   size_t max_buffer_size_;
+  
   // Actually written data size can be used for truncate
   // not counting padding data
-  std::atomic<uint64_t> filesize_;
-  std::atomic<uint64_t> flushed_size_;
+  std::atomic<uint64_t> filesize_; //Tarim-TODO: total size of the compaction.
+  std::atomic<uint64_t> flushed_size_; //Tarim-TODO: may not useful
 #ifndef ROCKSDB_LITE
   // This is necessary when we use unbuffered access
   // and writes must happen on aligned offsets
   // so we need to go back and write that page again
-  uint64_t next_write_offset_;
+  //uint64_t next_write_offset_;
 #endif  // ROCKSDB_LITE
   bool pending_sync_;
   std::atomic<bool> seen_error_;
@@ -184,9 +188,9 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
         //buf_(),
         max_buffer_size_(options.writable_file_max_buffer_size),
         filesize_(0),
-        flushed_size_(0),
+        //flushed_size_(0),
 #ifndef ROCKSDB_LITE
-        next_write_offset_(0),
+        //next_write_offset_(0),
 #endif  // ROCKSDB_LITE
         pending_sync_(false),
         seen_error_(false),

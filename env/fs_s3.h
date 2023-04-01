@@ -42,12 +42,8 @@ class ShortRetryStrategy : public arrow::fs::S3RetryStrategy {
 //Tarim-TODO: if need support HDFS..., add an extra layer abstraction.
 class S3FileSystem : public FileSystem {
  public:
-  S3FileSystem(const std::string endpoint,
-               const std::string& access_key, 
-               const std::string& secret_key)
-          : endpoint_(endpoint),
-            access_key_(access_key),
-            secret_key_(secret_key) {
+  S3FileSystem(const S3Endpoint & s3_endpoint)
+          : s3_endpoint_(s3_endpoint) {
     S3GlobalOptions options;
     options.log_level = S3LogLevel::Warn; //Tarim-TODO: configurable
     InitializeS3(options);
@@ -60,7 +56,7 @@ class S3FileSystem : public FileSystem {
 
   static const char* kClassName() { return "S3FileSystem"; }
   const char* Name() const override { return kClassName(); }
-  const char* NickName() const override { return kDefaultName(); }
+  const char* NickName() const override { return DefaultName(); }
 
   bool IsInstanceOf(const std::string& name) const override {
     if (name == "s3") {
@@ -305,9 +301,10 @@ class S3FileSystem : public FileSystem {
   std::shared_ptr<::arrow::io::OutputStream> out_file_;
   S3Options options_;
   std::shared_ptr<GroupNode> schema_;
-  std::string& endpoint_;
-  const std::string& access_key_;
-  const std::string& secret_key_;
+  S3Endpoint s3_endpoint_;
+  //std::string& endpoint_;
+  //const std::string& access_key_;
+  //const std::string& secret_key_;
 };
 
 }

@@ -65,6 +65,7 @@
 #include "table/table_reader.h"
 #include "table/two_level_iterator.h"
 #include "table/unique_id_impl.h"
+#include "table/last_level_iterator.h"
 #include "test_util/sync_point.h"
 #include "util/cast_util.h"
 #include "util/coding.h"
@@ -6505,7 +6506,18 @@ InternalIterator* VersionSet::MakeInputIterator(
               /*largest_compaction_key=*/nullptr,
               /*allow_unprepared_value=*/false);
         }
-      } else { //Tarim-TODO: last LastLevelIterator
+      } else if (static_cast<size_t>(c->level(which)) == (c->num_input_levels() - 1)) { // Tarim-TODO: last level is OK?
+        //Tarim-TODO: last LastLevelIterator
+        list[num++] = new LastLevelIterator(
+            cfd->table_cache(), read_options, file_options_compactions,
+            cfd->internal_comparator(), c->input_levels(which),
+            c->mutable_cf_options()->prefix_extractor,
+            /*should_sample=*/false,
+            /*no per level latency histogram=*/nullptr,
+            TableReaderCaller::kCompaction, /*skip_filters=*/false,
+            /*level=*/static_cast<int>(c->level(which)), range_del_agg,
+            c->boundaries(which));
+      } else {
         // Create concatenating iterator for the files from this level
         list[num++] = new LevelIterator(
             cfd->table_cache(), read_options, file_options_compactions,

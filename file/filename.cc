@@ -148,6 +148,11 @@ std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t number,
   return MakeTableFileName(path, number);
 }
 
+std::string TableFileNameOnS3(const std::string& main_path, uint64_t number) {
+  assert(number > 0);
+  return MakeFileName(main_path, number, ".parquet");
+}
+
 void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,
                       size_t out_buf_size) {
   if (path_id == 0) {

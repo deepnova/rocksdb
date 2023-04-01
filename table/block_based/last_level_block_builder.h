@@ -22,9 +22,7 @@ using parquet::Repetition;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
-constexpr int FIXED_LENGTH = 10;
-//------------------
-
+// RowGroup of Parquet
 class LastLevelBlockBuilder : public BlockBuilder {
  public:
   LastLevelBlockBuilder(const LastLevelBlockBuilder&) = delete;
@@ -100,6 +98,8 @@ class LastLevelBlockBuilder : public BlockBuilder {
   const bool use_delta_encoding_;
   // Refer to BlockIter::DecodeCurrentValue for format of delta encoded values
   const bool use_value_delta_encoding_;
+
+  parquet::RowGroupWriter* rg_writer_;
 
   std::string buffer_;              // Destination buffer
   std::vector<uint32_t> restarts_;  // Restart points

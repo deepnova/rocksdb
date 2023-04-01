@@ -67,6 +67,12 @@ using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
 
 typedef std::string (*GetSchemaCallBack)(std::string); //Tarim-TODO: not found the usage of std::function in JNI
 
+struct S3Endpoint {
+  std::string endpoint;
+  std::string access_key; 
+  std::string secret_key;
+};
+
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
   // versions are supported.
@@ -346,6 +352,8 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
 
   void Dump(Logger* log) const;
 
+  std::string last_level_main_path_; // path for last level data storage on main layer.
+  S3Endpoint s3_endpoint_;           //Tarim-TODO: HDFS?
   GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
   avro::ValidSchema schema_;
 

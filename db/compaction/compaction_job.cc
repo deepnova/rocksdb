@@ -1756,11 +1756,15 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
                                                CompactionOutputs& outputs) {
   assert(sub_compact != nullptr);
 
-  // no need to lock because VersionSet::next_file_number_ is atomic
-  uint64_t file_number = versions_->NewFileNumber();
-  std::string fname = GetTableFileName(file_number);
   // Fire events.
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
+
+  // no need to lock because VersionSet::next_file_number_ is atomic
+  uint64_t file_number = versions_->NewFileNumber();
+  std::string fname = GetTableFileNameV2(file_number, 
+                                         cfd->initial_cf_options().last_level_main_path_, 
+                                         sub_compact->compaction->is_last_level());
+
 #ifndef ROCKSDB_LITE
   EventHelpers::NotifyTableFileCreationStarted(
       cfd->ioptions()->listeners, dbname_, cfd->GetName(), fname, job_id_,
@@ -2064,6 +2068,17 @@ void CompactionJob::LogCompaction() {
 std::string CompactionJob::GetTableFileName(uint64_t file_number) {
   return TableFileName(compact_->compaction->immutable_options()->cf_paths,
                        file_number, compact_->compaction->output_path_id());
+}
+
+std::string CompactionJob::GetTableFileNameV2(uint64_t file_number, 
+                                              const std::string& main_path,
+                                              bool is_last_level) {
+  if(is_last_level == false){
+    return TableFileName(compact_->compaction->immutable_options()->cf_paths,
+                       file_number, compact_->compaction->output_path_id());
+  }else{
+    return TableFileNameOnS3(main_path, file_number);
+  }
 }
 
 Env::IOPriority CompactionJob::GetRateLimiterPriority() {

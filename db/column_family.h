@@ -490,7 +490,7 @@ class ColumnFamilyData {
 
   bool initialized() const { return initialized_.load(); }
 
-  ColumnFamilyOptions& initial_cf_options() {
+  ColumnFamilyOptions& initial_cf_options() { //Tarim-TODO: 'const' has token out
     return initial_cf_options_;
   }
 
@@ -560,7 +560,7 @@ class ColumnFamilyData {
   const InternalKeyComparator internal_comparator_;
   IntTblPropCollectorFactories int_tbl_prop_collector_factories_;
 
-  ColumnFamilyOptions initial_cf_options_;
+  ColumnFamilyOptions initial_cf_options_; //Tarim-TODO: 'const' has token out
   const ImmutableOptions ioptions_;
   MutableCFOptions mutable_cf_options_;
 
