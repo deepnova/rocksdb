@@ -73,6 +73,12 @@ struct S3Endpoint {
   std::string secret_key;
 };
 
+enum class TableModel : int8_t {
+    DELTA_ONLY = 1,
+    DELTA_MAIN = 2,
+    MAIN_ONLY  = 3
+};
+
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
   // versions are supported.
@@ -352,8 +358,9 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
 
   void Dump(Logger* log) const;
 
-  std::string last_level_main_path_; // path for last level data storage on main layer.
-  S3Endpoint s3_endpoint_;           //Tarim-TODO: HDFS?
+  // for Tarim
+  TableModel table_model = TableModel::DELTA_MAIN;
+  std::string last_level_main_path; // path for last level data storage on main layer.
   GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
   avro::ValidSchema schema_;
 
@@ -1427,7 +1434,7 @@ struct DBOptions {
   // inconsistency, e.g. deleted old data become visible again, etc.
   bool enforce_single_del_contracts = true;
 
-
+  S3Endpoint s3_endpoint;           //Tarim-TODO: HDFS?
 };
 
 // Options to control the behavior of a database (passed to DB::Open)
@@ -1733,6 +1740,8 @@ struct ReadOptions {
   //
   // Default: true
   bool optimize_multiget_for_io;
+
+  bool is_delta_scan = false; //Tarim: delta scan need take the ValueType out.
 
   ReadOptions();
   ReadOptions(bool cksum, bool cache);

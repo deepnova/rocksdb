@@ -229,6 +229,12 @@ class Compaction {
     return output_level_ == immutable_options_.num_levels - 1;
   }
 
+  // Is the last level data store to S3/HDFS
+  bool is_s3_storage() const {
+    return is_last_level() && 
+           column_family_data()->initial_cf_options().table_model == TableModel::DELTA_MAIN;
+  }
+
   // Does this compaction include all sst files?
   bool is_full_compaction() const { return is_full_compaction_; }
 

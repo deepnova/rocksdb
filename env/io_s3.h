@@ -1,4 +1,13 @@
 #pragma once
+
+#include <arrow/io/file.h>
+#include <arrow/util/logging.h>
+//#include <parquet/api/reader.h>
+#include <parquet/api/writer.h>
+#include <arrow/filesystem/s3fs.h>
+//#include <arrow/filesystem/filesystem.h>
+//#include <parquet/api/reader.h>
+
 #include "rocksdb/env.h"
 #include "rocksdb/file_system.h"
 #include "rocksdb/io_status.h"
@@ -11,25 +20,25 @@ using namespace arrow::fs;
 class S3WritableFile : public FSWritableFile {
  protected:
   const std::string filename_;
-  parquet::ParquetFileWriter *file_writer_;
+  std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
+  std::shared_ptr<::arrow::io::OutputStream> out_file_;
+  //Tarim-TODO: schema
+  std::shared_ptr<parquet::schema::GroupNode> schema_;
+  size_t logical_sector_size_;
   uint64_t filesize_;
 
  public:
   explicit S3WritableFile(const std::string& fname,
-                          parquet::ParquetFileWriter *file_writer,
-                          const EnvOptions& options)
-    : FSWritableFile(options),
-      filename_(fname),
-      file_writer_(file_writer),
-      filesize_(0) {}
+                          size_t logical_block_size,
+                          const EnvOptions& options);
 
   virtual ~S3WritableFile();
-
+/*
   parquet::ParquetFileWriter* GetFileWriter()
   {
-      return file_writer_;
+      return file_writer_.get();
   }
-
+*/
   // Need to implement this so the file is truncated correctly
   // with direct I/O
   virtual IOStatus Truncate(uint64_t size, const IOOptions& opts,
@@ -55,7 +64,7 @@ class S3WritableFile : public FSWritableFile {
   virtual IOStatus Sync(const IOOptions& opts, IODebugContext* dbg) override;
   virtual IOStatus Fsync(const IOOptions& opts, IODebugContext* dbg) override;
   virtual bool IsSyncThreadSafe() const override;
-  virtual bool use_direct_io() const override { return use_direct_io_; }
+  virtual bool use_direct_io() const override { return false; }
   virtual void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
   virtual uint64_t GetFileSize(const IOOptions& opts,
                                IODebugContext* dbg) override;
@@ -81,6 +90,7 @@ class S3SequentialFile : public FSSequentialFile {
   std::string filename_;
   //FILE* file_; //Tarim-TODO: S3 handler
   //int fd_;
+  size_t logical_sector_size_;
 
  public:
   S3SequentialFile(const std::string& fname, FILE* file, int fd,
@@ -94,7 +104,7 @@ class S3SequentialFile : public FSSequentialFile {
                                   char* scratch, IODebugContext* dbg) override;
   virtual IOStatus Skip(uint64_t n) override;
   virtual IOStatus InvalidateCache(size_t offset, size_t length) override;
-  virtual bool use_direct_io() const override { return use_direct_io_; }
+  virtual bool use_direct_io() const override { return false; }
   virtual size_t GetRequiredBufferAlignment() const override {
     return logical_sector_size_;
   }

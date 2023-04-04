@@ -165,7 +165,7 @@ CompactionJob::CompactionJob(
       env_(db_options.env),
       io_tracer_(io_tracer),
       fs_(db_options.fs, io_tracer),
-      last_level_fs_(db_options.fs, io_tracer),
+      last_level_fs_(db_options.last_level_fs, io_tracer),
       file_options_for_read_(
           fs_->OptimizeForCompactionTableRead(file_options, db_options_)),
       versions_(versions),
@@ -1762,8 +1762,8 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
   // no need to lock because VersionSet::next_file_number_ is atomic
   uint64_t file_number = versions_->NewFileNumber();
   std::string fname = GetTableFileNameV2(file_number, 
-                                         cfd->initial_cf_options().last_level_main_path_, 
-                                         sub_compact->compaction->is_last_level());
+                                         cfd->initial_cf_options().last_level_main_path, 
+                                         sub_compact->compaction->is_s3_storage());
 
 #ifndef ROCKSDB_LITE
   EventHelpers::NotifyTableFileCreationStarted(
@@ -1793,7 +1793,7 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
 
   Status s;
   IOStatus io_s;
-  if(sub_compact->compaction->is_last_level()) {
+  if(sub_compact->compaction->is_s3_storage()) {
     io_s = NewWritableFile(last_level_fs_.get(), fname, &writable_file, fo_copy);
   }else{
     io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
@@ -1881,7 +1881,7 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
   const auto& listeners =
       sub_compact->compaction->immutable_options()->listeners;
 
-  if(sub_compact->compaction->is_last_level()) {
+  if(sub_compact->compaction->is_s3_storage()) {
     ParquetFileWriter *fwriter = new ParquetFileWriter(
         std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
         db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
@@ -2072,8 +2072,8 @@ std::string CompactionJob::GetTableFileName(uint64_t file_number) {
 
 std::string CompactionJob::GetTableFileNameV2(uint64_t file_number, 
                                               const std::string& main_path,
-                                              bool is_last_level) {
-  if(is_last_level == false){
+                                              bool is_s3_storage) {
+  if(is_s3_storage == false){
     return TableFileName(compact_->compaction->immutable_options()->cf_paths,
                        file_number, compact_->compaction->output_path_id());
   }else{

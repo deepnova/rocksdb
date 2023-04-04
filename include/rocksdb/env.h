@@ -66,6 +66,8 @@ struct ThreadStatus;
 class FileSystem;
 class SystemClock;
 struct ConfigOptions;
+struct S3Endpoint;
+class S3FileSystem;
 
 const size_t kDefaultPageSize = 4 * 1024;
 
@@ -669,6 +671,7 @@ class Env : public Customizable {
   // Get the FileSystem implementation this Env was constructed with. It
   // could be a fully implemented one, or a wrapper class around the Env
   const std::shared_ptr<FileSystem>& GetFileSystem() const;
+  const std::shared_ptr<FileSystem>& GetLastLevelFileSystem(const S3Endpoint &ep); //Tarim
 
   // Get the SystemClock implementation this Env was constructed with. It
   // could be a fully implemented one, or a wrapper class around the Env
@@ -683,6 +686,9 @@ class Env : public Customizable {
 
   // Pointer to the underlying FileSystem implementation
   std::shared_ptr<FileSystem> file_system_;
+
+  //Tarim: For last level of LSM-Tree, it's ROCKSDB_NAMESPACE::S3FileSystem
+  std::shared_ptr<FileSystem> last_level_file_system_;
 
   // Pointer to the underlying SystemClock implementation
   std::shared_ptr<SystemClock> system_clock_;

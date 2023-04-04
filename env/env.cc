@@ -15,6 +15,7 @@
 #include "env/emulated_clock.h"
 #include "env/mock_env.h"
 #include "env/unique_id_gen.h"
+#include "env/fs_s3.h"
 #include "logging/env_logger.h"
 #include "memory/arena.h"
 #include "options/db_options.h"
@@ -1179,6 +1180,13 @@ Status NewEnvLogger(const std::string& fname, Env* env,
 
 const std::shared_ptr<FileSystem>& Env::GetFileSystem() const {
   return file_system_;
+}
+
+const std::shared_ptr<FileSystem>& Env::GetLastLevelFileSystem(const S3Endpoint &ep) {
+  if(last_level_file_system_ == nullptr) {
+    last_level_file_system_ = std::make_shared<S3FileSystem>(ep);
+  }
+  return last_level_file_system_;
 }
 
 const std::shared_ptr<SystemClock>& Env::GetSystemClock() const {
