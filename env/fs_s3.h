@@ -75,12 +75,11 @@ class S3FileSystem : public FileSystem {
                                const FileOptions& /*options*/,
                                std::unique_ptr<FSRandomAccessFile>* /*result*/,
                                IODebugContext* /*dbg*/) override {
-    //result->reset();
     return IOStatus::NotSupported("S3 object not supported NewRandomAccessFile().");
   }
 
   virtual IOStatus OpenWritableFile(const std::string& fname,
-                                    const FileOptions& /*options*/, bool reopen,
+                                    const FileOptions& options, bool reopen,
                                     std::unique_ptr<FSWritableFile>* result,
                                     IODebugContext* /*dbg*/) {
     result->reset();
@@ -89,24 +88,13 @@ class S3FileSystem : public FileSystem {
     if(reopen == true){
       return IOStatus::NotSupported("S3 object not supported re-open.");
     }
-    
-    auto&& res2 = fs_->OpenOutputStream(fname);
-    //std::cout << "S3 OpenOutputStream status: " << res2.status().code() << std::endl;
-    if(res2.status().code() != ::arrow::StatusCode::OK) {
-        //std::cerr << "S3 OpenOutputStream error, status: " << res2.status().code() << std::endl;
-        return IOStatus::IOError(res2.status().message());
-    }
-/*
-    out_file_ = std::move(res2).ValueOrDie();
 
-    // Add writer properties
-    parquet::WriterProperties::Builder builder;
-    builder.compression(parquet::Compression::ACT_SNAPPY); //Tarim-TODO: configurable
-    std::shared_ptr<parquet::WriterProperties> props = builder.build();
+    static size_t logical_sector_size = 64 * 1024; //Tarim-TODO: may not need
+    result->reset(new S3WritableFile(fname, logical_sector_size, options));
+
+    S3WritableFile* fp = static_cast<S3WritableFile*>(result->get());
+    s = fp->Open(fname, fs_.get());
     
-    parquet::ParquetFileWriter::Open(out_file_, schema_, props);
-    result->reset(new S3WritableFile(fname, file_writer_));
-    */
     return s;
   }
 
@@ -148,15 +136,20 @@ class S3FileSystem : public FileSystem {
                         const IOOptions& /*opts*/,
                         std::unique_ptr<FSDirectory>* /*result*/,
                         IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    return IOStatus::NotSupported("S3 object not supported NewDirectory().");
   }
 
-  IOStatus FileExists(const std::string& /*fname*/,
+  IOStatus FileExists(const std::string& fname,
                       const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Result<arrow::fs::FileInfo> result = fs_->GetFileInfo(fname); 
+    if(result.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(result.status()));
+    }
+    if(result->type() == arrow::fs::FileType::NotFound){ //Tarim-TODO: is result.ok() == true in this case?
+      return IOStatus::NotFound();
+    }
+    return IOStatus::OK();
   }
 
   IOStatus GetChildren(const std::string& /*dir*/,
@@ -164,60 +157,84 @@ class S3FileSystem : public FileSystem {
                        std::vector<std::string>* /*result*/,
                        IODebugContext* /*dbg*/) override {
     //Tarim-TODO:
-    return IOStatus::NotSupported();
+    return IOStatus::NotSupported("S3 object not supported GetChildren().");
   }
 
-  IOStatus DeleteFile(const std::string& /*fname*/,
+  IOStatus DeleteFile(const std::string& fname,
                       const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
-    IOStatus result;
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Status s = fs_->DeleteFile(fname);
+    if(s.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(s));
+    } 
+    return IOStatus::OK();
   }
 
-  IOStatus CreateDir(const std::string& /*name*/,
+  IOStatus CreateDir(const std::string& name,
                      const IOOptions& /*opts*/,
                      IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Status s = fs_->CreateDir(name, true);
+    if(s.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(s));
+    } 
+    return IOStatus::OK();
   }
 
-  IOStatus CreateDirIfMissing(const std::string& /*name*/,
+  IOStatus CreateDirIfMissing(const std::string& name,
                               const IOOptions& /*opts*/,
                               IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Status s = fs_->CreateDir(name, true);
+    if(s.ok() == false){
+      //Tarim-TODO: success if there is 'directory exists' error.
+      return IOStatus::IOError(Status::ArrowErrorStr(s));
+    } 
+    return IOStatus::OK();
   }
 
-  IOStatus DeleteDir(const std::string& /*name*/,
+  IOStatus DeleteDir(const std::string& name,
                      const IOOptions& /*opts*/,
                      IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Status s = fs_->DeleteDir(name);
+    if(s.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(s));
+    } 
+    return IOStatus::OK();
   }
 
-  IOStatus GetFileSize(const std::string& /*fname*/,
+  IOStatus GetFileSize(const std::string& fname,
                        const IOOptions& /*opts*/,
-                       uint64_t* /*size*/,
+                       uint64_t* size,
                        IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Result<arrow::fs::FileInfo> result = fs_->GetFileInfo(fname); 
+    if(result.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(result.status()));
+    }
+    *size = result->size();
+    return IOStatus::OK();
   }
 
-  IOStatus GetFileModificationTime(const std::string& /*fname*/,
+  IOStatus GetFileModificationTime(const std::string& fname,
                                    const IOOptions& /*opts*/,
-                                   uint64_t* /*file_mtime*/,
+                                   uint64_t* file_mtime, // seconds
                                    IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Result<arrow::fs::FileInfo> result = fs_->GetFileInfo(fname); 
+    if(result.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(result.status()));
+    }
+    arrow::fs::TimePoint mtime = result->mtime(); // nanoseconds
+    *file_mtime = mtime.time_since_epoch().count() % static_cast<uint64_t>(1000000000);
+    return IOStatus::OK();
   }
 
-  IOStatus RenameFile(const std::string& /*src*/,
-                      const std::string& /*target*/,
+  IOStatus RenameFile(const std::string& src,
+                      const std::string& target,
                       const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported();
+    arrow::Status s = fs_->Move(src, target);
+    if(s.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(s));
+    } 
+    return IOStatus::OK();
   }
 
   IOStatus LinkFile(const std::string& /*src*/,
@@ -257,12 +274,13 @@ class S3FileSystem : public FileSystem {
     return IOStatus::NotSupported("S3 object not supported UnlockFile().");
   }
 
-  IOStatus GetAbsolutePath(const std::string& /*db_path*/,
+  IOStatus GetAbsolutePath(const std::string& db_path,
                            const IOOptions& /*opts*/,
-                           std::string* /*output_path*/,
+                           std::string* output_path,
                            IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported("S3 object not supported GetAbsolutePath().");
+    //Tarim-TODO: if db_path[0] == '/' ?
+    *output_path = db_path;
+    return IOStatus::OK();
   }
 
   IOStatus GetTestDirectory(const IOOptions& /*opts*/,
@@ -273,17 +291,23 @@ class S3FileSystem : public FileSystem {
 
   IOStatus GetFreeSpace(const std::string& /*fname*/,
                         const IOOptions& /*opts*/,
-                        uint64_t* /*free_space*/,
+                        uint64_t* free_space,
                         IODebugContext* /*dbg*/) override {
-    //Tarim-TODO:
-    return IOStatus::NotSupported("S3 object not supported GetFreeSpace().");
+    //Tarim-TODO: a rough value, 100GB 
+    *free_space = 107374182400;
+    return IOStatus::OK();
   }
 
-  IOStatus IsDirectory(const std::string& /*path*/,
+  IOStatus IsDirectory(const std::string& path,
                        const IOOptions& /*opts*/,
-                       bool* /*is_dir*/,
+                       bool* is_dir,
                        IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported IsDirectory().");
+    arrow::Result<arrow::fs::FileInfo> result = fs_->GetFileInfo(path); 
+    if(result.ok() == false){
+      return IOStatus::IOError(Status::ArrowErrorStr(result.status()));
+    }
+    *is_dir = result->IsDirectory();
+    return IOStatus::OK();
   }
 
   FileOptions OptimizeForLogWrite(const FileOptions& file_options,

@@ -23,6 +23,8 @@
 
 #include <memory>
 #include <string>
+#include <sstream>
+#include <arrow/status.h>
 
 #ifdef ROCKSDB_ASSERT_STATUS_CHECKED
 #include "port/stack_trace.h"
@@ -448,6 +450,12 @@ class Status {
   // Return a string representation of this status suitable for printing.
   // Returns the string "OK" for success.
   std::string ToString() const;
+
+  static std::string ArrowErrorStr(const arrow::Status & status){
+    std::ostringstream oss;
+    oss << "arrow error, code: " << static_cast<int>(status.code()) << ", message: " << status.message();
+    return oss.str();
+  }
 
  protected:
   Code code_;

@@ -33,12 +33,7 @@ class S3WritableFile : public FSWritableFile {
                           const EnvOptions& options);
 
   virtual ~S3WritableFile();
-/*
-  parquet::ParquetFileWriter* GetFileWriter()
-  {
-      return file_writer_.get();
-  }
-*/
+
   // Need to implement this so the file is truncated correctly
   // with direct I/O
   virtual IOStatus Truncate(uint64_t size, const IOOptions& opts,
@@ -83,6 +78,11 @@ class S3WritableFile : public FSWritableFile {
 #ifdef OS_LINUX
   virtual size_t GetUniqueId(char* id, size_t max_size) const override;
 #endif
+
+  parquet::ParquetFileWriter* GetFileWriter() { return file_writer_.get(); }
+
+  virtual IOStatus Open(const std::string& fname, arrow::fs::S3FileSystem *fs);
+
 };
 
 class S3SequentialFile : public FSSequentialFile {
@@ -108,6 +108,29 @@ class S3SequentialFile : public FSSequentialFile {
   virtual size_t GetRequiredBufferAlignment() const override {
     return logical_sector_size_;
   }
+};
+
+class S3Directory : public FSDirectory {
+ public:
+  explicit S3Directory(const std::string& directory_name)
+            :directory_name_(directory_name){}
+  ~S3Directory(){}
+  virtual IOStatus Fsync(const IOOptions& opts, IODebugContext* dbg) override{
+    return FsyncWithDirOptions(opts, dbg, DirFsyncOptions());
+  }
+
+  virtual IOStatus Close(const IOOptions& /*opts*/, IODebugContext* /*dbg*/) override{
+    return IOStatus::OK();
+  }
+
+  virtual IOStatus FsyncWithDirOptions(
+      const IOOptions&, IODebugContext*,
+      const DirFsyncOptions& /*dir_fsync_options*/) override{
+    return IOStatus::OK();
+  }
+
+ private:
+  const std::string directory_name_;
 };
 
 }

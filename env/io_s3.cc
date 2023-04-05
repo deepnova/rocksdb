@@ -23,4 +23,26 @@ S3WritableFile::~S3WritableFile() {
     s.PermitUncheckedError();
   }
 }
+
+IOStatus S3WritableFile::Open(const std::string& fname, arrow::fs::S3FileSystem *fs) {
+
+    auto&& res2 = fs->OpenOutputStream(fname);
+    std::cout << "S3 OpenOutputStream status: " << res2.status().CodeAsString() << std::endl;
+    if(res2.status().code() != ::arrow::StatusCode::OK) {
+        std::cerr << "S3 OpenOutputStream error, status: " << res2.status().CodeAsString() << std::endl;
+        return IOStatus::IOError(res2.status().message());
+    }
+
+    out_file_ = std::move(res2).ValueOrDie();
+    
+    // Add writer properties
+    parquet::WriterProperties::Builder builder;
+    builder.compression(parquet::Compression::ACT_SNAPPY); //Tarim-TODO: configurable
+    std::shared_ptr<parquet::WriterProperties> props = builder.build();
+    
+    file_writer_ = parquet::ParquetFileWriter::Open(out_file_, schema_, props);
+
+    return IOStatus::OK();
+}
+
 }
