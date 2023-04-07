@@ -68,14 +68,14 @@ class S3FileSystem : public FileSystem {
                              IODebugContext* /*dbg*/) override {
     //result->reset();
     //Tarim-TODO: not understand what it's for.
-    return IOStatus::NotSupported("S3 object not supported NewSequentialFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported NewSequentialFile().");
   }
 
   IOStatus NewRandomAccessFile(const std::string& /*fname*/,
                                const FileOptions& /*options*/,
                                std::unique_ptr<FSRandomAccessFile>* /*result*/,
                                IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported NewRandomAccessFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported NewRandomAccessFile().");
   }
 
   virtual IOStatus OpenWritableFile(const std::string& fname,
@@ -86,7 +86,7 @@ class S3FileSystem : public FileSystem {
     IOStatus s;
 
     if(reopen == true){
-      return IOStatus::NotSupported("S3 object not supported re-open.");
+      return IOStatus::NotSupported("S3FileSystem not supported re-open.");
     }
 
     static size_t logical_sector_size = 64 * 1024; //Tarim-TODO: may not need
@@ -116,27 +116,27 @@ class S3FileSystem : public FileSystem {
                              const FileOptions& /*options*/,
                              std::unique_ptr<FSWritableFile>* /*result*/,
                              IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported ReuseWritableFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported ReuseWritableFile().");
   }
 
   IOStatus NewRandomRWFile(const std::string& /*fname*/,
                            const FileOptions& /*options*/,
                            std::unique_ptr<FSRandomRWFile>* /*result*/,
                            IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported NewRandomRWFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported NewRandomRWFile().");
   }
 
   IOStatus NewMemoryMappedFileBuffer(
       const std::string& /*fname*/,
       std::unique_ptr<MemoryMappedFileBuffer>* /*result*/) override {
-    return IOStatus::NotSupported("S3 object not supported NewMemoryMappedFileBuffer().");
+    return IOStatus::NotSupported("S3FileSystem not supported NewMemoryMappedFileBuffer().");
   }
 
   IOStatus NewDirectory(const std::string& /*name*/,
                         const IOOptions& /*opts*/,
                         std::unique_ptr<FSDirectory>* /*result*/,
                         IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported NewDirectory().");
+    return IOStatus::NotSupported("S3FileSystem not supported NewDirectory().");
   }
 
   IOStatus FileExists(const std::string& fname,
@@ -157,7 +157,7 @@ class S3FileSystem : public FileSystem {
                        std::vector<std::string>* /*result*/,
                        IODebugContext* /*dbg*/) override {
     //Tarim-TODO:
-    return IOStatus::NotSupported("S3 object not supported GetChildren().");
+    return IOStatus::NotSupported("S3FileSystem not supported GetChildren().");
   }
 
   IOStatus DeleteFile(const std::string& fname,
@@ -241,14 +241,14 @@ class S3FileSystem : public FileSystem {
                     const std::string& /*target*/,
                     const IOOptions& /*opts*/,
                     IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported LinkFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported LinkFile().");
   }
 
   IOStatus NumFileLinks(const std::string& /*fname*/,
                         const IOOptions& /*opts*/,
                         uint64_t* /*count*/,
                         IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported NumFileLinks().");
+    return IOStatus::NotSupported("S3FileSystem not supported NumFileLinks().");
   }
 
   IOStatus AreFilesSame(const std::string& /*first*/,
@@ -256,7 +256,7 @@ class S3FileSystem : public FileSystem {
                         const IOOptions& /*opts*/,
                         bool* /*res*/,
                         IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported AreFilesSame().");
+    return IOStatus::NotSupported("S3FileSystem not supported AreFilesSame().");
   }
 
   IOStatus LockFile(const std::string& /*fname*/,
@@ -264,14 +264,14 @@ class S3FileSystem : public FileSystem {
                     FileLock** /*lock*/,
                     IODebugContext* /*dbg*/) override {
     //Tarim-TODO:
-    return IOStatus::NotSupported("S3 object not supported LockFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported LockFile().");
   }
 
   IOStatus UnlockFile(FileLock* /*lock*/,
                       const IOOptions& /*opts*/,
                       IODebugContext* /*dbg*/) override {
     //Tarim-TODO:
-    return IOStatus::NotSupported("S3 object not supported UnlockFile().");
+    return IOStatus::NotSupported("S3FileSystem not supported UnlockFile().");
   }
 
   IOStatus GetAbsolutePath(const std::string& db_path,
@@ -286,7 +286,7 @@ class S3FileSystem : public FileSystem {
   IOStatus GetTestDirectory(const IOOptions& /*opts*/,
                             std::string* /*result*/,
                             IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3 object not supported GetTestDirectory().");
+    return IOStatus::NotSupported("S3FileSystem not supported GetTestDirectory().");
   }
 
   IOStatus GetFreeSpace(const std::string& /*fname*/,

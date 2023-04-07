@@ -7,7 +7,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 //
-// GeneralBlockBuilder generates blocks where keys are prefix-compressed:
+// BlockBuilder generates blocks where keys are prefix-compressed:
 //
 // When we store a key, we drop the prefix shared with the previous
 // string.  This helps reduce the space requirement significantly.
@@ -44,7 +44,7 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-GeneralBlockBuilder::GeneralBlockBuilder(
+BlockBuilder::BlockBuilder(
     int block_restart_interval, bool use_delta_encoding,
     bool use_value_delta_encoding,
     BlockBasedTableOptions::DataBlockIndexType index_type,
@@ -69,7 +69,7 @@ GeneralBlockBuilder::GeneralBlockBuilder(
   estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
 }
 
-void GeneralBlockBuilder::Reset() {
+void BlockBuilder::Reset() {
   buffer_.clear();
   restarts_.resize(1);  // First restart point is at offset 0
   assert(restarts_[0] == 0);
@@ -85,12 +85,12 @@ void GeneralBlockBuilder::Reset() {
 #endif
 }
 
-void GeneralBlockBuilder::SwapAndReset(std::string& buffer) {
+void BlockBuilder::SwapAndReset(std::string& buffer) {
   std::swap(buffer_, buffer);
   Reset();
 }
 
-size_t GeneralBlockBuilder::EstimateSizeAfterKV(const Slice& key,
+size_t BlockBuilder::EstimateSizeAfterKV(const Slice& key,
                                          const Slice& value) const {
   size_t estimate = CurrentSizeEstimate();
   // Note: this is an imprecise estimate as it accounts for the whole key size
@@ -118,7 +118,7 @@ size_t GeneralBlockBuilder::EstimateSizeAfterKV(const Slice& key,
   return estimate;
 }
 
-Slice GeneralBlockBuilder::Finish() {
+Slice BlockBuilder::Finish() {
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
@@ -141,7 +141,7 @@ Slice GeneralBlockBuilder::Finish() {
   return Slice(buffer_);
 }
 
-void GeneralBlockBuilder::Add(const Slice& key, const Slice& value,
+void BlockBuilder::Add(const Slice& key, const Slice& value,
                        const Slice* const delta_value) {
   // Ensure no unsafe mixing of Add and AddWithLastKey
   assert(!add_with_last_key_called_);
@@ -155,7 +155,7 @@ void GeneralBlockBuilder::Add(const Slice& key, const Slice& value,
   }
 }
 
-void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
+void BlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
                                   const Slice& last_key_param,
                                   const Slice* const delta_value) {
   // Ensure no unsafe mixing of Add and AddWithLastKey
@@ -166,7 +166,7 @@ void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
 
   // Here we make sure to use an empty `last_key` on first call after creation
   // or Reset. This is more convenient for the caller and we can be more
-  // clever inside GeneralBlockBuilder. On this hot code path, we want to avoid
+  // clever inside BlockBuilder. On this hot code path, we want to avoid
   // conditional jumps like `buffer_.empty() ? ... : ...` so we can use a
   // fast min operation instead, with an assertion to be sure our logic is
   // sound.
@@ -179,7 +179,7 @@ void GeneralBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
   AddWithLastKeyImpl(key, value, last_key, delta_value, buffer_size);
 }
 
-inline void GeneralBlockBuilder::AddWithLastKeyImpl(const Slice& key,
+inline void BlockBuilder::AddWithLastKeyImpl(const Slice& key,
                                              const Slice& value,
                                              const Slice& last_key,
                                              const Slice* const delta_value,

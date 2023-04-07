@@ -3,7 +3,7 @@
 
 #include "rocksdb/slice.h"
 #include "rocksdb/table.h"
-#include "table/block_based/block_builder.h"
+//#include "table/block_based/block_builder.h"
 
 #include <avro/ValidSchema.hh>
 
@@ -23,7 +23,7 @@ using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
 // RowGroup of Parquet
-class LastLevelBlockBuilder : public BlockBuilder {
+class LastLevelBlockBuilder /*: public BlockBuilder*/ {
  public:
   LastLevelBlockBuilder(const LastLevelBlockBuilder&) = delete;
   void operator=(const LastLevelBlockBuilder&) = delete;
@@ -68,11 +68,11 @@ class LastLevelBlockBuilder : public BlockBuilder {
 
   // Returns an estimate of the current (uncompressed) size of the block
   // we are building.
-  inline size_t CurrentSizeEstimate() const {
+  inline size_t CurrentSizeEstimate() const; /*{
     return estimate_ + (data_block_hash_index_builder_.Valid()
                             ? data_block_hash_index_builder_.EstimateSize()
                             : 0);
-  }
+  }*/
 
   // Returns an estimated block size after appending key and value.
   size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const;
@@ -107,7 +107,7 @@ class LastLevelBlockBuilder : public BlockBuilder {
   int counter_;    // Number of entries emitted since restart
   bool finished_;  // Has Finish() been called?
   std::string last_key_;
-  DataBlockHashIndexBuilder data_block_hash_index_builder_;
+  //DataBlockHashIndexBuilder data_block_hash_index_builder_;
 #ifndef NDEBUG
   bool add_with_last_key_called_ = false;
 #endif

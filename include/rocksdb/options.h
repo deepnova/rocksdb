@@ -74,9 +74,9 @@ struct S3Endpoint {
 };
 
 enum class TableModel : int8_t {
-    DELTA_ONLY = 1,
-    DELTA_MAIN = 2,
-    MAIN_ONLY  = 3
+    kDeltaOnly = 1,
+    kDeltaMain = 2,
+    kMainOnly  = 3
 };
 
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
@@ -359,7 +359,7 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   void Dump(Logger* log) const;
 
   // for Tarim
-  TableModel table_model = TableModel::DELTA_MAIN;
+  TableModel table_model = TableModel::kDeltaMain;
   std::string last_level_main_path; // path for last level data storage on main layer.
   GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
   avro::ValidSchema schema_;

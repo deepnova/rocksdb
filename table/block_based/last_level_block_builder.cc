@@ -19,7 +19,7 @@
 //------------------
 
 namespace ROCKSDB_NAMESPACE {
-
+/*
 LastLevelBlockBuilder::LastLevelBlockBuilder(
     int block_restart_interval, bool use_delta_encoding,
     bool use_value_delta_encoding,
@@ -209,6 +209,6 @@ inline void LastLevelBlockBuilder::AddWithLastKeyImpl(const Slice& key,
   counter_++;
   estimate_ += buffer_.size() - buffer_size;
 }
-
+*/
 }  // namespace ROCKSDB_NAMESPACE
 

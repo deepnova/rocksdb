@@ -132,7 +132,7 @@ BlockContents GetBlockContents(std::unique_ptr<BlockBuilder> *builder,
                                const std::vector<std::string> &keys,
                                const std::vector<std::string> &values,
                                const int /*prefix_group_size*/ = 1) {
-  builder->reset(new GeneralBlockBuilder(1 /* restart interval */));
+  builder->reset(new BlockBuilder(1 /* restart interval */));
 
   // Add only half of the keys
   for (size_t i = 0; i < keys.size(); ++i) {

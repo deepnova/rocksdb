@@ -58,11 +58,13 @@ class S3WritableFile : public FSWritableFile {
   virtual IOStatus Flush(const IOOptions& opts, IODebugContext* dbg) override;
   virtual IOStatus Sync(const IOOptions& opts, IODebugContext* dbg) override;
   virtual IOStatus Fsync(const IOOptions& opts, IODebugContext* dbg) override;
-  virtual bool IsSyncThreadSafe() const override;
+  virtual bool IsSyncThreadSafe() const override { return false; } //Tarim-TODO: not sure
   virtual bool use_direct_io() const override { return false; }
-  virtual void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
-  virtual uint64_t GetFileSize(const IOOptions& opts,
-                               IODebugContext* dbg) override;
+  //virtual void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
+  virtual uint64_t GetFileSize(const IOOptions& /*opts*/,
+                  IODebugContext* /*dbg*/) override{
+    return filesize_;
+  }
   virtual IOStatus InvalidateCache(size_t offset, size_t length) override;
   virtual size_t GetRequiredBufferAlignment() const override {
     return logical_sector_size_;
@@ -85,6 +87,8 @@ class S3WritableFile : public FSWritableFile {
 
 };
 
+/*
+//Tarim-TODO: used by manifest and log files, should not need.
 class S3SequentialFile : public FSSequentialFile {
  private:
   std::string filename_;
@@ -109,6 +113,7 @@ class S3SequentialFile : public FSSequentialFile {
     return logical_sector_size_;
   }
 };
+*/
 
 class S3Directory : public FSDirectory {
  public:

@@ -18,6 +18,7 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+/* //Tarim-TODO: no need?
 class BlockBuilder {
  public:
   BlockBuilder(const BlockBuilder&) = delete;
@@ -67,23 +68,23 @@ class BlockBuilder {
   // Return true iff no entries have been added since the last Reset()
   virtual bool empty() const = 0;
 };
-
-class GeneralBlockBuilder : public BlockBuilder {
+*/
+class BlockBuilder {
  public:
-  GeneralBlockBuilder(const GeneralBlockBuilder&) = delete;
-  void operator=(const GeneralBlockBuilder&) = delete;
+  BlockBuilder(const BlockBuilder&) = delete;
+  void operator=(const BlockBuilder&) = delete;
 
-  explicit GeneralBlockBuilder(int block_restart_interval,
+  explicit BlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
                         bool use_value_delta_encoding = false,
                         BlockBasedTableOptions::DataBlockIndexType index_type =
                             BlockBasedTableOptions::kDataBlockBinarySearch,
                         double data_block_hash_table_util_ratio = 0.75);
 
-  // Reset the contents as if the GeneralBlockBuilder was just constructed.
+  // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
 
-  // Swap the contents in GeneralBlockBuilder with buffer, then reset the GeneralBlockBuilder.
+  // Swap the contents in BlockBuilder with buffer, then reset the BlockBuilder.
   void SwapAndReset(std::string& buffer);
 
   // REQUIRES: Finish() has not been called since the last call to Reset().
