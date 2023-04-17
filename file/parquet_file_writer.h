@@ -136,7 +136,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   std::string file_name_;
   FSWritableFilePtr writable_file_;
   SystemClock* clock_;
-  std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
+  //std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
   size_t max_buffer_size_;
   
   // Actually written data size can be used for truncate

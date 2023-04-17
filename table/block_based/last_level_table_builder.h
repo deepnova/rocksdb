@@ -24,8 +24,8 @@ class LastLevelTableBuilder : public TableBuilder {
   // building in *file.  Does not close the file.  It is up to the
   // caller to close the file after calling Finish().
   LastLevelTableBuilder(const BlockBasedTableOptions& table_options,
-                         const TableBuilderOptions& table_builder_options,
-                         AbstractWritableFileWriter* file);
+                        const TableBuilderOptions& table_builder_options,
+                        AbstractWritableFileWriter* file);
 
   // No copying allowed
   LastLevelTableBuilder(const LastLevelTableBuilder&) = delete;
@@ -88,13 +88,22 @@ class LastLevelTableBuilder : public TableBuilder {
 
  private:
 
-  void WriteBlock(BlockBuilder* block, BlockHandle* handle,
-                  BlockType blocktype);
+  void WriteBlock(/*BlockBuilder* block, BlockHandle* handle,*/
+                  /*BlockType blocktype*/);
 
   void Flush();
 
  private:
-  //Rep* rep_;
+  struct Rep;
+  std::unique_ptr<Rep> rep_;
 };
+
+bool ExceptedValueType(const ValueType value_type){
+  return value_type == kTypeValue
+         && value_type == kTypeMerge ;
+}
+  
+
+
 
 }

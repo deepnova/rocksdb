@@ -29,6 +29,7 @@
 #include "rocksdb/utilities/options_type.h"
 #include "table/block_based/block_based_table_builder.h"
 #include "table/block_based/block_based_table_reader.h"
+#include "table/block_based/last_level_table_builder.h"
 #include "table/format.h"
 #include "util/mutexlock.h"
 #include "util/string_util.h"
@@ -636,8 +637,12 @@ Status BlockBasedTableFactory::NewTableReader(
 TableBuilder* BlockBasedTableFactory::NewTableBuilder(
     const TableBuilderOptions& table_builder_options,
     AbstractWritableFileWriter* file) const {
-  return new BlockBasedTableBuilder(table_options_, table_builder_options,
-                                    file);
+  if(table_builder_options.is_s3_storage == true){
+    //for Tarim
+    return new LastLevelTableBuilder(table_options_, table_builder_options, file);
+  }else{
+    return new BlockBasedTableBuilder(table_options_, table_builder_options, file);
+  }
 }
 
 Status BlockBasedTableFactory::ValidateOptions(

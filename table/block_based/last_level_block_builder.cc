@@ -19,19 +19,13 @@
 //------------------
 
 namespace ROCKSDB_NAMESPACE {
-/*
-LastLevelBlockBuilder::LastLevelBlockBuilder(
-    int block_restart_interval, bool use_delta_encoding,
-    bool use_value_delta_encoding,
-    BlockBasedTableOptions::DataBlockIndexType index_type,
-    double data_block_hash_table_util_ratio)
-    : block_restart_interval_(block_restart_interval),
-      use_delta_encoding_(use_delta_encoding),
-      use_value_delta_encoding_(use_value_delta_encoding),
-      restarts_(1, 0),  // First restart point is at offset 0
-      counter_(0),
+
+LastLevelBlockBuilder::LastLevelBlockBuilder() 
+    : counter_(0),
       finished_(false) {
-  // if parqeut file has index
+
+  //Tarim-TODO: Is there parqeut file index?
+  /*
   switch (index_type) {
     case BlockBasedTableOptions::kDataBlockBinarySearch:
       break;
@@ -42,11 +36,12 @@ LastLevelBlockBuilder::LastLevelBlockBuilder(
     default:
       assert(0);
   }
+  */
   
-  assert(block_restart_interval_ >= 1);
   estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
 }
 
+/*
 void LastLevelBlockBuilder::Reset() {
   buffer_.clear();
   restarts_.resize(1);  // First restart point is at offset 0

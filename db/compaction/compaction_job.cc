@@ -1908,6 +1908,7 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
       0 /* oldest_key_time */, current_time, db_id_, db_session_id_,
       sub_compact->compaction->max_output_file_size(), file_number);
 
+  tboptions.is_s3_storage = sub_compact->compaction->is_s3_storage();
   outputs.NewBuilder(tboptions);
 
   LogFlush(db_options_.info_log);

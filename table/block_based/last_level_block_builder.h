@@ -11,6 +11,10 @@
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
+#include <avro/Compiler.hh>
+#include <avro/DataFile.hh>
+#include <avro/Generic.hh>
+#include <avro/Stream.hh>
 
 
 namespace ROCKSDB_NAMESPACE {
@@ -22,18 +26,13 @@ using parquet::Repetition;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
-// RowGroup of Parquet
-class LastLevelBlockBuilder /*: public BlockBuilder*/ {
+//Tarim: RowGroup of Parquet
+class LastLevelBlockBuilder {
  public:
   LastLevelBlockBuilder(const LastLevelBlockBuilder&) = delete;
   void operator=(const LastLevelBlockBuilder&) = delete;
 
-  explicit LastLevelBlockBuilder(int block_restart_interval,
-                        bool use_delta_encoding = true,
-                        bool use_value_delta_encoding = false,
-                        BlockBasedTableOptions::DataBlockIndexType index_type =
-                            BlockBasedTableOptions::kDataBlockBinarySearch,
-                        double data_block_hash_table_util_ratio = 0.75);
+  explicit LastLevelBlockBuilder();
 
   // Reset the contents as if the LastLevelBlockBuilder was just constructed.
   void Reset();
@@ -78,7 +77,7 @@ class LastLevelBlockBuilder /*: public BlockBuilder*/ {
   size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const;
 
   // Return true iff no entries have been added since the last Reset()
-  bool empty() const { return buffer_.empty(); }
+  bool empty() const { return false; } //Tarim-TODO
 
   void SetSchema(const avro::ValidSchema *schema) {
     schema_ptr_ = schema;
@@ -87,22 +86,35 @@ class LastLevelBlockBuilder /*: public BlockBuilder*/ {
   //  return schema_ptr_;
   //}
 
+  bool hasRowGroup(){
+    return rg_writer_ != nullptr;
+  }
+
+  void ResetRowGroup(parquet::RowGroupWriter* rg_writer){
+    assert(rg_writer != nullptr);
+    rg_writer_ = rg_writer;
+  }
+
  private:
   inline void AddWithLastKeyImpl(const Slice& key, const Slice& value,
                                  const Slice& last_key,
                                  const Slice* const delta_value,
                                  size_t buffer_size);
 
-  const int block_restart_interval_;
+  //const int block_restart_interval_;
   // TODO(myabandeh): put it into a separate IndexBlockBuilder
-  const bool use_delta_encoding_;
+  //const bool use_delta_encoding_;
   // Refer to BlockIter::DecodeCurrentValue for format of delta encoded values
-  const bool use_value_delta_encoding_;
+  //const bool use_value_delta_encoding_;
 
-  parquet::RowGroupWriter* rg_writer_;
+  const avro::ValidSchema* schema_ptr_ = nullptr;
+  parquet::RowGroupWriter* rg_writer_ = nullptr;
+  //avro::GenericRecord record_; //Tarim-TODO
+  Slice min_key_;
+  Slice max_key_;
 
-  std::string buffer_;              // Destination buffer
-  std::vector<uint32_t> restarts_;  // Restart points
+  //std::string buffer_;              // Destination buffer
+  //std::vector<uint32_t> restarts_;  // Restart points
   size_t estimate_;
   int counter_;    // Number of entries emitted since restart
   bool finished_;  // Has Finish() been called?
@@ -111,7 +123,6 @@ class LastLevelBlockBuilder /*: public BlockBuilder*/ {
 #ifndef NDEBUG
   bool add_with_last_key_called_ = false;
 #endif
-  const avro::ValidSchema *schema_ptr_;
 };
 
 } // namespace ROCKSDB_NAMESPACE

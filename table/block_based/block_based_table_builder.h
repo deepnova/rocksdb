@@ -121,7 +121,6 @@ class BlockBasedTableBuilder : public TableBuilder {
   // Compress and write block content to the file.
   void WriteBlock(const Slice& block_contents, BlockHandle* handle,
                   BlockType block_type);
-
   // Directly write data to the file.
   void WriteMaybeCompressedBlock(const Slice& data, CompressionType,
                                  BlockHandle* handle, BlockType block_type,
@@ -153,10 +152,7 @@ class BlockBasedTableBuilder : public TableBuilder {
   struct Rep;
   class BlockBasedTablePropertiesCollectorFactory;
   class BlockBasedTablePropertiesCollector;
-  class LastLevelTableBuilder;
-
   Rep* rep_;
-  LastLevelTableBuilder* last_level_table_bulder_;
 
   struct ParallelCompressionRep;
 
