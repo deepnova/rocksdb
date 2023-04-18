@@ -48,8 +48,9 @@ struct LastLevelTableBuilder::Rep {
   //std::atomic<uint64_t> offset;
   //size_t alignment;
   LastLevelBlockBuilder data_block;
-  Slice min_key_;
-  Slice max_key_;
+  Slice min_key;
+  Slice max_key;
+
   // Buffers uncompressed data blocks to replay later. Needed when
   // compression dictionary is enabled so we can finalize the dictionary before
   // compressing any data blocks.
@@ -60,7 +61,7 @@ struct LastLevelTableBuilder::Rep {
   //std::unique_ptr<IndexBuilder> index_builder;
   //PartitionedIndexBuilder* p_index_builder_ = nullptr;
 
-  std::string last_key;
+  //std::string last_key;
   const Slice* first_key_in_next_block = nullptr;
   //CompressionType compression_type;
   //uint64_t sample_for_compression;
@@ -77,7 +78,9 @@ struct LastLevelTableBuilder::Rep {
 
   //size_t data_begin_offset = 0;
 
-  TableProperties props;
+  TableProperties props; //Tarim-TODO:
+  ParsedInternalKey ikey;
+  bool allow_data_in_errors = true;
 
   // States of the builder.
   //
@@ -122,7 +125,7 @@ struct LastLevelTableBuilder::Rep {
 
   //std::unique_ptr<ParallelCompressionRep> pc_rep;
 
-  //uint64_t get_offset() { return offset.load(std::memory_order_relaxed); }
+  //uint64_t get_offset() { return offset.load(std::memory_order_relaxed); } //Tarim: without multi-thread
   //void set_offset(uint64_t o) { offset.store(o, std::memory_order_relaxed); }
 /*
   bool IsParallelCompressionEnabled() const {
@@ -185,6 +188,17 @@ struct LastLevelTableBuilder::Rep {
       io_status_ok.store(false, std::memory_order_relaxed);
     }
     SetStatus(ios);
+  }
+
+  bool ShouldNewRowGroup(){
+    //Tarim-TODO:
+    static const size_t MAX_ROW_GROUP_SIZE = 134217728; //128MB
+    static const int MAX_ROW_GROUP_ROWS = 1000000; //100w
+    if(data_block.CurrentSizeEstimate() >= MAX_ROW_GROUP_SIZE
+        || data_block.CurrentRows() >= MAX_ROW_GROUP_ROWS){
+      return true;
+    }
+    return false;
   }
 
   Rep(const BlockBasedTableOptions& table_opt, const TableBuilderOptions& tbo,
@@ -364,13 +378,17 @@ struct LastLevelTableBuilder::Rep {
 
 void LastLevelTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_.get();
+  Status s = ParseInternalKey(key, &r->ikey, r->allow_data_in_errors);
+  if(s != Status::OK()) return;
 
-  ValueType value_type = ExtractValueType(key);
+  ValueType& value_type = r->ikey.type;
+  Slice& user_key = r->ikey.user_key;
   ROCKS_LOG_INFO(
     r->ioptions.logger,
     "[LastLevelTableBuilder::Add] value_type: %d\n",
     value_type);
 
+  //Tarim-TODO: Is there 'kTypeRangeDeletion' key-value? need merge for last level
   if (ExceptedValueType(value_type) == false) {
     ROCKS_LOG_ERROR(
       r->ioptions.logger,
@@ -379,36 +397,100 @@ void LastLevelTableBuilder::Add(const Slice& key, const Slice& value) {
     return;
   }
 
-  //Slice user_key; //Tarim-TODO:
-
-  if(r->data_block.hasRowGroup() == false){
-    //Tarim-TODO: new row group
-    //r->data_block.ResetRowGroup();
+  if(r->data_block.HasRowGroup() == false){
+    parquet::RowGroupWriter* rg_writer = r->file->AppendRowGroup();
+    r->data_block.ResetRowGroup(rg_writer);
   }
 
-  r->data_block.Add(key, value);
+  r->data_block.Add(user_key, value); //chunk prefix no influence
 
-  //Tarim-TODO:
-  //write row group: data_block
-  //decode value to column
-  //make sure file size
   //update min-max
+  if(user_key.compare(r->min_key) < 0) {
+    r->min_key = user_key;
+  } else if(user_key.compare(r->max_key) > 0){
+    r->max_key = user_key;
+  }
+
+  r->props.data_size += r->data_block.CurrentSizeEstimate();
+  r->props.num_entries += r->data_block.CurrentRows();
+  if(r->ShouldNewRowGroup()){
+    r->data_block.Reset();
+  }
 }
 
 Status LastLevelTableBuilder::Finish() {
         
   Rep* r = rep_.get();
-  //Tarim-TODO:
-  
+  r->data_block.Finish();
+  r->file->Close();
   r->state = Rep::State::kClosed;
   return Status::OK();
 }
 
 void LastLevelTableBuilder::Abandon() {
   Rep* r = rep_.get();
-  //Tarim-TODO:
+  r->data_block.Finish();
+  r->file->Close();
   r->state = Rep::State::kClosed;
 }
 
+TableProperties LastLevelTableBuilder::GetTableProperties() const {
+  TableProperties ret = rep_->props;
+  for (const auto& collector : rep_->table_properties_collectors) {
+    for (const auto& prop : collector->GetReadableProperties()) {
+      ret.readable_properties.insert(prop);
+    }
+    collector->Finish(&ret.user_collected_properties).PermitUncheckedError();
+  }
+  return ret;
 }
 
+std::string LastLevelTableBuilder::GetFileChecksum() const { //Tarim-TODO: just copy from BlockBasedTableBuilder
+  if (rep_->file != nullptr) {
+    return rep_->file->GetFileChecksum();
+  } else {
+    return kUnknownFileChecksum;
+  }
+}
+
+const char* LastLevelTableBuilder::GetFileChecksumFuncName() const { //Tarim-TODO: just copy from BlockBasedTableBuilder
+  if (rep_->file != nullptr) {
+    return rep_->file->GetFileChecksumFuncName();
+  } else {
+    return kUnknownFileChecksumFuncName;
+  }
+}
+
+uint64_t LastLevelTableBuilder::NumEntries() const {
+  return rep_->props.num_entries;
+}
+
+bool LastLevelTableBuilder::IsEmpty() const {
+  return rep_->props.num_entries == 0;
+}
+
+uint64_t LastLevelTableBuilder::FileSize() const {
+  return rep_->props.data_size; 
+}
+
+uint64_t LastLevelTableBuilder::EstimatedFileSize() const { 
+  return rep_->props.data_size; 
+}
+
+bool LastLevelTableBuilder::NeedCompact() const {
+  for (const auto& collector : rep_->table_properties_collectors) {
+    if (collector->NeedCompact()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void LastLevelTableBuilder::SetSeqnoTimeTableProperties(
+    const std::string& encoded_seqno_to_time_mapping,
+    uint64_t oldest_ancestor_time) {
+  rep_->props.seqno_to_time_mapping = encoded_seqno_to_time_mapping;
+  rep_->props.creation_time = oldest_ancestor_time;
+}
+
+}

@@ -201,6 +201,9 @@ bool CompactionOutputs::ShouldStopBefore(const CompactionIterator& c_iter) {
   if (partitioner_ && partitioner_->ShouldPartition(PartitionerRequest(
                           last_key_for_partitioner_, c_iter.user_key(),
                           current_output_file_size_)) == kRequired) {
+
+    //Tarim-TODO: last level check remain file size
+    
     return true;
   }
 

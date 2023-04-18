@@ -20,44 +20,11 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-LastLevelBlockBuilder::LastLevelBlockBuilder() 
-    : counter_(0),
-      finished_(false) {
-
+LastLevelBlockBuilder::LastLevelBlockBuilder() {
   //Tarim-TODO: Is there parqeut file index?
-  /*
-  switch (index_type) {
-    case BlockBasedTableOptions::kDataBlockBinarySearch:
-      break;
-    case BlockBasedTableOptions::kDataBlockBinaryAndHash:
-      data_block_hash_index_builder_.Initialize(
-          data_block_hash_table_util_ratio);
-      break;
-    default:
-      assert(0);
-  }
-  */
-  
-  estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
 }
 
 /*
-void LastLevelBlockBuilder::Reset() {
-  buffer_.clear();
-  restarts_.resize(1);  // First restart point is at offset 0
-  assert(restarts_[0] == 0);
-  estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
-  counter_ = 0;
-  finished_ = false;
-  last_key_.clear();
-  //if (data_block_hash_index_builder_.Valid()) {
-  //  data_block_hash_index_builder_.Reset();
-  //}
-#ifndef NDEBUG
-  add_with_last_key_called_ = false;
-#endif
-}
-
 void LastLevelBlockBuilder::SwapAndReset(std::string& buffer) {
   std::swap(buffer_, buffer);
   Reset();
@@ -113,20 +80,6 @@ Slice LastLevelBlockBuilder::Finish() {
   PutFixed32(&buffer_, block_footer);
   finished_ = true;
   return Slice(buffer_);
-}
-
-void LastLevelBlockBuilder::Add(const Slice& key, const Slice& value,
-                       const Slice* const delta_value) {
-  // Ensure no unsafe mixing of Add and AddWithLastKey
-  assert(!add_with_last_key_called_);
-
-  AddWithLastKeyImpl(key, value, last_key_, delta_value, buffer_.size());
-  if (use_delta_encoding_) {
-    // Update state
-    // We used to just copy the changed data, but it appears to be
-    // faster to just copy the whole thing.
-    last_key_.assign(key.data(), key.size());
-  }
 }
 
 void LastLevelBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
@@ -205,5 +158,30 @@ inline void LastLevelBlockBuilder::AddWithLastKeyImpl(const Slice& key,
   estimate_ += buffer_.size() - buffer_size;
 }
 */
+
+void LastLevelBlockBuilder::Add(const Slice& user_key, const Slice& value,
+                       const Slice* const /*delta_value*/) {
+  //Tarim-TODO:
+  if(user_key.compare(value) > 0) return;
+  /*
+  // Ensure no unsafe mixing of Add and AddWithLastKey
+  assert(!add_with_last_key_called_);
+
+  AddWithLastKeyImpl(key, value, last_key_, delta_value, buffer_.size());
+  if (use_delta_encoding_) {
+    // Update state
+    // We used to just copy the changed data, but it appears to be
+    // faster to just copy the whole thing.
+    last_key_.assign(key.data(), key.size());
+  }
+  */
+
+}
+
+void LastLevelBlockBuilder::Reset() {
+  rg_writer_->Close();
+  rg_writer_ = nullptr; //Tarim-TODO: not sure it's OK?
+}
+
 }  // namespace ROCKSDB_NAMESPACE
 

@@ -8,6 +8,7 @@
 //#include <arrow/filesystem/s3fs.h>
 #include <parquet/api/writer.h>
 
+#include "env/io_s3.h"
 #include "db/version_edit.h"
 #include "env/file_system_tracer.h"
 #include "port/port.h"
@@ -135,6 +136,7 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
 
   std::string file_name_;
   FSWritableFilePtr writable_file_;
+  S3WritableFile* s3_writable_file_; // pointer from writable_file_
   SystemClock* clock_;
   //std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
   size_t max_buffer_size_;
@@ -222,6 +224,8 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
 #else  // !ROCKSDB_LITE
     (void)listeners;
 #endif
+
+    s3_writable_file_ = static_cast<S3WritableFile*>(writable_file_.get()); //Tarim-TODO: if type not match?
     if (file_checksum_gen_factory != nullptr) {
       FileChecksumGenContext checksum_gen_context;
       checksum_gen_context.file_name = _file_name;
@@ -283,6 +287,10 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
 
   FSWritableFile* writable_file() const { return writable_file_.get(); }
 
+  parquet::RowGroupWriter* AppendRowGroup(){ 
+    return s3_writable_file_->GetFileWriter()->AppendRowGroup(); 
+  }
+
   bool use_direct_io() { return writable_file_->use_direct_io(); }
 
   bool BufferIsEmpty() { return false; }
@@ -320,7 +328,8 @@ class ParquetFileWriter : public AbstractWritableFileWriter {
   }
 
  private:
-   const avro::ValidSchema *schema_ptr_;
+  const avro::ValidSchema *schema_ptr_;
+  //parquet::ParquetFileWriter file_writer_;
 /*
   // Decide the Rate Limiter priority.
   static Env::IOPriority DecideRateLimiterPriority(

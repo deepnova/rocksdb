@@ -48,30 +48,30 @@ class LastLevelTableBuilder : public TableBuilder {
   // Finish building the table.  Stops using the file passed to the
   // constructor after this function returns.
   // REQUIRES: Finish(), Abandon() have not been called
-  Status Finish() override;
+  inline Status Finish() override;
 
   // Indicate that the contents of this builder should be abandoned.  Stops
   // using the file passed to the constructor after this function returns.
   // If the caller is not going to call Finish(), it must call Abandon()
   // before destroying this builder.
   // REQUIRES: Finish(), Abandon() have not been called
-  void Abandon() override;
+  inline void Abandon() override;
 
   // Number of calls to Add() so far.
-  uint64_t NumEntries() const override;
+  inline uint64_t NumEntries() const override;
 
-  bool IsEmpty() const override;
+  inline bool IsEmpty() const override;
 
   // Size of the file generated so far.  If invoked after a successful
   // Finish() call, returns the size of the final generated file.
-  uint64_t FileSize() const override;
+  inline uint64_t FileSize() const override;
 
   // Estimated size of the file generated so far. This is used when
   // FileSize() cannot estimate final SST size, e.g. parallel compression
   // is enabled.
-  uint64_t EstimatedFileSize() const override;
+  inline uint64_t EstimatedFileSize() const override;
 
-  bool NeedCompact() const override;
+  inline bool NeedCompact() const override;
 
   // Get table properties
   TableProperties GetTableProperties() const override;
@@ -86,19 +86,19 @@ class LastLevelTableBuilder : public TableBuilder {
       const std::string& encoded_seqno_to_time_mapping,
       uint64_t oldest_ancestor_time) override;
 
- private:
+ //private:
 
-  void WriteBlock(/*BlockBuilder* block, BlockHandle* handle,*/
-                  /*BlockType blocktype*/);
+  //void WriteBlock(/*BlockBuilder* block, BlockHandle* handle,*/
+  //                /*BlockType blocktype*/);
 
-  void Flush();
+  //void Flush();
 
  private:
   struct Rep;
   std::unique_ptr<Rep> rep_;
 };
 
-bool ExceptedValueType(const ValueType value_type){
+inline bool ExceptedValueType(const ValueType value_type){
   return value_type == kTypeValue
          && value_type == kTypeMerge ;
 }

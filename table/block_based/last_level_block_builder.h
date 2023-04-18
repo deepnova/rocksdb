@@ -67,14 +67,16 @@ class LastLevelBlockBuilder {
 
   // Returns an estimate of the current (uncompressed) size of the block
   // we are building.
-  inline size_t CurrentSizeEstimate() const; /*{
-    return estimate_ + (data_block_hash_index_builder_.Valid()
-                            ? data_block_hash_index_builder_.EstimateSize()
-                            : 0);
-  }*/
+  inline size_t CurrentSizeEstimate() const {
+    return (size_t)rg_writer_->total_bytes_written();
+  }
+
+  inline int CurrentRows() const {
+    return rg_writer_->num_rows();
+  }
 
   // Returns an estimated block size after appending key and value.
-  size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const;
+  //size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const;
 
   // Return true iff no entries have been added since the last Reset()
   bool empty() const { return false; } //Tarim-TODO
@@ -86,7 +88,7 @@ class LastLevelBlockBuilder {
   //  return schema_ptr_;
   //}
 
-  bool hasRowGroup(){
+  bool HasRowGroup(){
     return rg_writer_ != nullptr;
   }
 
@@ -110,19 +112,9 @@ class LastLevelBlockBuilder {
   const avro::ValidSchema* schema_ptr_ = nullptr;
   parquet::RowGroupWriter* rg_writer_ = nullptr;
   //avro::GenericRecord record_; //Tarim-TODO
-  Slice min_key_;
-  Slice max_key_;
-
-  //std::string buffer_;              // Destination buffer
-  //std::vector<uint32_t> restarts_;  // Restart points
-  size_t estimate_;
-  int counter_;    // Number of entries emitted since restart
-  bool finished_;  // Has Finish() been called?
-  std::string last_key_;
-  //DataBlockHashIndexBuilder data_block_hash_index_builder_;
-#ifndef NDEBUG
-  bool add_with_last_key_called_ = false;
-#endif
+  //Slice min_key_;
+  //Slice max_key_;
+  //int counter_;    // Number of entries emitted since restart
 };
 
 } // namespace ROCKSDB_NAMESPACE
