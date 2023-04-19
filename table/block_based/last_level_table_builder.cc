@@ -194,7 +194,7 @@ struct LastLevelTableBuilder::Rep {
     //Tarim-TODO:
     static const size_t MAX_ROW_GROUP_SIZE = 134217728; //128MB
     static const int MAX_ROW_GROUP_ROWS = 1000000; //100w
-    if(data_block.CurrentSizeEstimate() >= MAX_ROW_GROUP_SIZE
+    if(data_block.CurrentCompressedSizeEstimate() >= MAX_ROW_GROUP_SIZE
         || data_block.CurrentRows() >= MAX_ROW_GROUP_ROWS){
       return true;
     }
@@ -213,7 +213,7 @@ struct LastLevelTableBuilder::Rep {
         //              ? std::min(static_cast<size_t>(table_options.block_size),
         //                         kDefaultPageSize)
         //              : 0),
-        data_block(),
+        data_block(tbo.ioptions.logger),
         //range_del_block(1 /* block_restart_interval */),
         //internal_prefix_transform(tbo.moptions.prefix_extractor.get()),
         //compression_type(tbo.compression_type),
@@ -411,7 +411,7 @@ void LastLevelTableBuilder::Add(const Slice& key, const Slice& value) {
     r->max_key = user_key;
   }
 
-  r->props.data_size += r->data_block.CurrentSizeEstimate();
+  r->props.data_size += r->data_block.CurrentCompressedSizeEstimate();
   r->props.num_entries += r->data_block.CurrentRows();
   if(r->ShouldNewRowGroup()){
     r->data_block.Reset();
@@ -421,7 +421,7 @@ void LastLevelTableBuilder::Add(const Slice& key, const Slice& value) {
 Status LastLevelTableBuilder::Finish() {
         
   Rep* r = rep_.get();
-  r->data_block.Finish();
+  //r->data_block.Finish();
   r->file->Close();
   r->state = Rep::State::kClosed;
   return Status::OK();
@@ -429,7 +429,7 @@ Status LastLevelTableBuilder::Finish() {
 
 void LastLevelTableBuilder::Abandon() {
   Rep* r = rep_.get();
-  r->data_block.Finish();
+  r->data_block.Reset();
   r->file->Close();
   r->state = Rep::State::kClosed;
 }

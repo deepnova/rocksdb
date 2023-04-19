@@ -9,7 +9,7 @@
 
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
-#include <parquet/api/reader.h>
+//#include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 #include <avro/Compiler.hh>
 #include <avro/DataFile.hh>
@@ -32,13 +32,13 @@ class LastLevelBlockBuilder {
   LastLevelBlockBuilder(const LastLevelBlockBuilder&) = delete;
   void operator=(const LastLevelBlockBuilder&) = delete;
 
-  explicit LastLevelBlockBuilder();
+  explicit LastLevelBlockBuilder(Logger* logger);
 
   // Reset the contents as if the LastLevelBlockBuilder was just constructed.
   void Reset();
 
   // Swap the contents in LastLevelBlockBuilder with buffer, then reset the LastLevelBlockBuilder.
-  void SwapAndReset(std::string& buffer);
+  //void SwapAndReset(std::string& buffer);
 
   // REQUIRES: Finish() has not been called since the last call to Reset().
   // REQUIRES: key is larger than any previously added key
@@ -48,27 +48,19 @@ class LastLevelBlockBuilder {
   void Add(const Slice& key, const Slice& value,
            const Slice* const delta_value = nullptr);
 
-  // A faster version of Add() if the previous key is already known for all
-  // Add()s.
-  // REQUIRES: Finish() has not been called since the last call to Reset().
-  // REQUIRES: key is larger than any previously added key
-  // REQUIRES: if AddWithLastKey has been called since last Reset(), last_key
-  // is the key from most recent AddWithLastKey. (For convenience, last_key
-  // is ignored on first call after creation or Reset().)
-  // DO NOT mix with Add() between Resets.
-  void AddWithLastKey(const Slice& key, const Slice& value,
-                      const Slice& last_key,
-                      const Slice* const delta_value = nullptr);
-
   // Finish building the block and return a slice that refers to the
   // block contents.  The returned slice will remain valid for the
   // lifetime of this builder or until Reset() is called.
-  Slice Finish();
+  inline void Finish();
 
   // Returns an estimate of the current (uncompressed) size of the block
   // we are building.
   inline size_t CurrentSizeEstimate() const {
     return (size_t)rg_writer_->total_bytes_written();
+  }
+
+  inline size_t CurrentCompressedSizeEstimate() const {
+    return (size_t)rg_writer_->total_compressed_bytes_written();
   }
 
   inline int CurrentRows() const {
@@ -79,14 +71,15 @@ class LastLevelBlockBuilder {
   //size_t EstimateSizeAfterKV(const Slice& key, const Slice& value) const;
 
   // Return true iff no entries have been added since the last Reset()
-  bool empty() const { return false; } //Tarim-TODO
-
-  void SetSchema(const avro::ValidSchema *schema) {
-    schema_ptr_ = schema;
+  bool empty() const {
+    return rg_writer_ == nullptr || rg_writer_->num_rows() == 0;
   }
-  //const avro::ValidSchema* GetSchema() { // needless
-  //  return schema_ptr_;
-  //}
+
+  void SetSchema(const avro::ValidSchema *schema) { // call as early as possible
+    assert(schema != nullptr);
+    schema_ptr_ = schema;
+    record_ = std::make_unique<avro::GenericRecord>(schema_ptr_->root());
+  }
 
   bool HasRowGroup(){
     return rg_writer_ != nullptr;
@@ -98,23 +91,11 @@ class LastLevelBlockBuilder {
   }
 
  private:
-  inline void AddWithLastKeyImpl(const Slice& key, const Slice& value,
-                                 const Slice& last_key,
-                                 const Slice* const delta_value,
-                                 size_t buffer_size);
-
-  //const int block_restart_interval_;
-  // TODO(myabandeh): put it into a separate IndexBlockBuilder
-  //const bool use_delta_encoding_;
-  // Refer to BlockIter::DecodeCurrentValue for format of delta encoded values
-  //const bool use_value_delta_encoding_;
-
+  Logger* logger_;
   const avro::ValidSchema* schema_ptr_ = nullptr;
   parquet::RowGroupWriter* rg_writer_ = nullptr;
-  //avro::GenericRecord record_; //Tarim-TODO
-  //Slice min_key_;
-  //Slice max_key_;
-  //int counter_;    // Number of entries emitted since restart
+  std::unique_ptr<avro::GenericRecord> record_; //Tarim-TODO
+  avro::DecoderPtr decoder_;
 };
 
 } // namespace ROCKSDB_NAMESPACE

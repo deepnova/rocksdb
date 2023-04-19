@@ -8,6 +8,7 @@
 #include "rocksdb/comparator.h"
 #include "table/block_based/data_block_footer.h"
 #include "util/coding.h"
+#include "logging/logging.h"
 
 //#include "logging/logging.h"
 
@@ -20,165 +21,71 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-LastLevelBlockBuilder::LastLevelBlockBuilder() {
+LastLevelBlockBuilder::LastLevelBlockBuilder(Logger* logger)
+    : logger_(logger) {
+  decoder_ = avro::binaryDecoder();
   //Tarim-TODO: Is there parqeut file index?
 }
 
-/*
-void LastLevelBlockBuilder::SwapAndReset(std::string& buffer) {
-  std::swap(buffer_, buffer);
-  Reset();
-}
-
-size_t LastLevelBlockBuilder::EstimateSizeAfterKV(const Slice& key,
-                                         const Slice& value) const {
-  size_t estimate = CurrentSizeEstimate();
-  // Note: this is an imprecise estimate as it accounts for the whole key size
-  // instead of non-shared key size.
-  estimate += key.size();
-  // In value delta encoding we estimate the value delta size as half the full
-  // value size since only the size field of block handle is encoded.
-  estimate +=
-      !use_value_delta_encoding_ || (counter_ >= block_restart_interval_)
-          ? value.size()
-          : value.size() / 2;
-
-  if (counter_ >= block_restart_interval_) {
-    estimate += sizeof(uint32_t);  // a new restart entry.
-  }
-
-  estimate += sizeof(int32_t);  // varint for shared prefix length.
-  // Note: this is an imprecise estimate as we will have to encoded size, one
-  // for shared key and one for non-shared key.
-  estimate += VarintLength(key.size());  // varint for key length.
-  if (!use_value_delta_encoding_ || (counter_ >= block_restart_interval_)) {
-    estimate += VarintLength(value.size());  // varint for value length.
-  }
-
-  return estimate;
-}
-
-Slice LastLevelBlockBuilder::Finish() {
-  // Append restart array
-  for (size_t i = 0; i < restarts_.size(); i++) {
-    PutFixed32(&buffer_, restarts_[i]);
-  }
-
-  uint32_t num_restarts = static_cast<uint32_t>(restarts_.size());
-
-  BlockBasedTableOptions::DataBlockIndexType index_type =
-      BlockBasedTableOptions::kDataBlockBinarySearch;
-  if (data_block_hash_index_builder_.Valid() &&
-      CurrentSizeEstimate() <= kMaxBlockSizeSupportedByHashIndex) {
-    data_block_hash_index_builder_.Finish(buffer_);
-    index_type = BlockBasedTableOptions::kDataBlockBinaryAndHash;
-  }
-
-  // footer is a packed format of data_block_index_type and num_restarts
-  uint32_t block_footer = PackIndexTypeAndNumRestarts(index_type, num_restarts);
-
-  PutFixed32(&buffer_, block_footer);
-  finished_ = true;
-  return Slice(buffer_);
-}
-
-void LastLevelBlockBuilder::AddWithLastKey(const Slice& key, const Slice& value,
-                                  const Slice& last_key_param,
-                                  const Slice* const delta_value) {
-  // Ensure no unsafe mixing of Add and AddWithLastKey
-  assert(last_key_.empty());
-#ifndef NDEBUG
-  add_with_last_key_called_ = false;
-#endif
-
-  // Here we make sure to use an empty `last_key` on first call after creation
-  // or Reset. This is more convenient for the caller and we can be more
-  // clever inside LastLevelBlockBuilder. On this hot code path, we want to avoid
-  // conditional jumps like `buffer_.empty() ? ... : ...` so we can use a
-  // fast min operation instead, with an assertion to be sure our logic is
-  // sound.
-  size_t buffer_size = buffer_.size();
-  size_t last_key_size = last_key_param.size();
-  assert(buffer_size == 0 || buffer_size >= last_key_size);
-
-  Slice last_key(last_key_param.data(), std::min(buffer_size, last_key_size));
-
-  AddWithLastKeyImpl(key, value, last_key, delta_value, buffer_size);
-}
-
-inline void LastLevelBlockBuilder::AddWithLastKeyImpl(const Slice& key,
-                                             const Slice& value,
-                                             const Slice& last_key,
-                                             const Slice* const delta_value,
-                                             size_t buffer_size) {
-  assert(!finished_);
-  assert(counter_ <= block_restart_interval_);
-  assert(!use_value_delta_encoding_ || delta_value);
-  size_t shared = 0;  // number of bytes shared with prev key
-  if (counter_ >= block_restart_interval_) {
-    // Restart compression
-    restarts_.push_back(static_cast<uint32_t>(buffer_size));
-    estimate_ += sizeof(uint32_t);
-    counter_ = 0;
-  } else if (use_delta_encoding_) {
-    // See how much sharing to do with previous string
-    shared = key.difference_offset(last_key);
-  }
-
-  const size_t non_shared = key.size() - shared;
-
-  if (use_value_delta_encoding_) {
-    // Add "<shared><non_shared>" to buffer_
-    PutVarint32Varint32(&buffer_, static_cast<uint32_t>(shared),
-                        static_cast<uint32_t>(non_shared));
-  } else {
-    // Add "<shared><non_shared><value_size>" to buffer_
-    PutVarint32Varint32Varint32(&buffer_, static_cast<uint32_t>(shared),
-                                static_cast<uint32_t>(non_shared),
-                                static_cast<uint32_t>(value.size()));
-  }
-
-  // Add string delta to buffer_ followed by value
-  buffer_.append(key.data() + shared, non_shared);
-  // Use value delta encoding only when the key has shared bytes. This would
-  // simplify the decoding, where it can figure which decoding to use simply by
-  // looking at the shared bytes size.
-  if (shared != 0 && use_value_delta_encoding_) {
-    buffer_.append(delta_value->data(), delta_value->size());
-  } else {
-    buffer_.append(value.data(), value.size());
-  }
-
-  if (data_block_hash_index_builder_.Valid()) {
-    data_block_hash_index_builder_.Add(ExtractUserKey(key),
-                                       restarts_.size() - 1);
-  }
-
-  counter_++;
-  estimate_ += buffer_.size() - buffer_size;
-}
-*/
-
-void LastLevelBlockBuilder::Add(const Slice& user_key, const Slice& value,
+void LastLevelBlockBuilder::Add(const Slice& /*user_key*/, const Slice& value,
                        const Slice* const /*delta_value*/) {
-  //Tarim-TODO:
-  if(user_key.compare(value) > 0) return;
-  /*
-  // Ensure no unsafe mixing of Add and AddWithLastKey
-  assert(!add_with_last_key_called_);
+  avro::InputStreamPtr is = avro::memoryInputStream((const uint8_t*)value.data(), value.size());
+  decoder_->init(*is);
 
-  AddWithLastKeyImpl(key, value, last_key_, delta_value, buffer_.size());
-  if (use_delta_encoding_) {
-    // Update state
-    // We used to just copy the changed data, but it appears to be
-    // faster to just copy the whole thing.
-    last_key_.assign(key.data(), key.size());
+  //Tarim-TODO: not support schema evolution yet
+  assert(record_->fieldCount() == (size_t)rg_writer_->num_columns());
+
+  // only one record
+  avro::GenericRecord& r = *record_;
+  size_t c = r.schema()->leaves();
+  for (size_t i = 0; i < c; ++i) {
+    avro::decode(*decoder_, r.fieldAt(i));
+    parquet::ColumnWriter* cw = rg_writer_->column(i);
+    // types
+    switch(r.fieldAt(i).type()){
+      case avro::AVRO_STRING:
+        //parquet::ByteArray s(r.fieldAt(i).value<std::string>());
+        //static_cast<parquet::ByteArrayWriter*>(cw)->WriteBatch(1, nullptr, nullptr, &s);
+        break;
+      case avro::AVRO_INT:
+        static_cast<parquet::Int32Writer*>(cw)->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<int32_t>());
+        break;
+      case avro::AVRO_LONG:
+        static_cast<parquet::Int64Writer*>(cw)->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<int64_t>());
+        break;
+      case avro::AVRO_FLOAT:
+        static_cast<parquet::FloatWriter*>(cw)->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<float>());
+        break;
+      case avro::AVRO_DOUBLE:
+        static_cast<parquet::DoubleWriter*>(cw)->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<double>());
+        break;
+      case avro::AVRO_BOOL:
+        static_cast<parquet::BoolWriter*>(cw)->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<bool>());
+        break;
+      case avro::AVRO_ENUM: 
+        //cw->WriteBatch(1, nullptr, nullptr, &r.fieldAt(i).value<avro::GenericEnum>().value());
+        //break;
+      case avro::AVRO_BYTES:
+      case avro::AVRO_RECORD:
+      case avro::AVRO_ARRAY:
+      case avro::AVRO_MAP:
+      case avro::AVRO_FIXED:
+      case avro::AVRO_SYMBOLIC:
+      case avro::AVRO_UNION:
+      case avro::AVRO_NULL:
+      default:
+        ROCKS_LOG_WARN(logger_, "not support avro type: %s\n", avro::toString(r.fieldAt(i).type()).c_str());
+        break;
+    }
   }
-  */
-
 }
 
-void LastLevelBlockBuilder::Reset() {
+inline void LastLevelBlockBuilder::Reset() {
+  rg_writer_->Close();
+  rg_writer_ = nullptr; //Tarim-TODO: not sure it's OK?
+}
+
+void LastLevelBlockBuilder::Finish() {
   rg_writer_->Close();
   rg_writer_ = nullptr; //Tarim-TODO: not sure it's OK?
 }

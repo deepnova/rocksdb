@@ -87,7 +87,7 @@ public:
     for (size_t i = 0; i < records_count; ++i) {
         size_t c = r.schema()->leaves();
         for (size_t j = 0; j < c; ++j) {
-            avro::decode(*decoder, r.fieldAt(j));
+            avro::decode<avro::GenericDatum>(*decoder, r.fieldAt(j));
         }
 
         ASSERT_TRUE(r.field("f1").type() == avro::AVRO_STRING);
