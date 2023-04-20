@@ -202,8 +202,14 @@ bool CompactionOutputs::ShouldStopBefore(const CompactionIterator& c_iter) {
                           last_key_for_partitioner_, c_iter.user_key(),
                           current_output_file_size_)) == kRequired) {
 
-    //Tarim-TODO: last level check remain file size
-    
+    //Tarim-TODO: config 
+    static const uint64_t MAX_ROW_GROUP_SIZE = 134217728; //128MB
+    static constexpr uint64_t DOUBLE_MAX_ROW_GROUP_SIZE = 2 * MAX_ROW_GROUP_SIZE;
+    stats_.UpdateRemainEstimateSize();
+    if(stats_.remain_total_size < DOUBLE_MAX_ROW_GROUP_SIZE){
+      return false;
+    }
+
     return true;
   }
 
@@ -644,6 +650,7 @@ CompactionOutputs::CompactionOutputs(const Compaction* compaction,
   if (compaction->output_level() != 0) {
     FillFilesToCutForTtl();
   }
+  stats_.Inputs(*compaction_->inputs());
 }
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -163,9 +163,10 @@ class InternalStats {
     uint64_t output_row_avg_size = 0;
     uint64_t remain_total_size = 0;
 
-    void Inputs(const std::vector<CompactionInputFiles>& inputs){
+    void Inputs(const std::vector<CompactionInputFiles>& inputs) {
       for(size_t i = 0; i < inputs.size(); i++){
         for(size_t j = 0; j < inputs[i].files.size(); j++){
+          //Tarim-TODO: get chunk prefix from smallest and largest key of FileMetaData.
           const FileMetaData* fm = inputs[i].files[j];
           input_total_records += fm->num_entries - fm->num_deletions;
           input_total_size += fm->raw_value_size;
