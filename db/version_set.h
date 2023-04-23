@@ -1054,6 +1054,16 @@ class Version {
   // No copying allowed
   Version(const Version&) = delete;
   void operator=(const Version&) = delete;
+
+
+  bool is_last_level(const int level) const {
+    return level == storage_info_.num_levels() - 1;
+  }
+
+  bool is_s3_storage(int level) const {
+    return is_last_level(level) && 
+           cfd_->initial_cf_options().table_model == TableModel::kDeltaMain;
+  }
 };
 
 class BaseReferencedVersionBuilder;

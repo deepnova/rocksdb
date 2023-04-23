@@ -168,8 +168,9 @@ LIB_SOURCES =                                                   \
   table/block_based/binary_search_index_reader.cc               \
   table/block_based/block.cc                                    \
   table/block_based/block_based_table_builder.cc                \
-  table/block_based/last_level_block_builder.cc					\
-  table/block_based/last_level_table_builder.cc					\
+  table/block_based/last_level_block_builder.cc									\
+  table/block_based/last_level_table_builder.cc									\
+  table/block_based/last_level_table_iterator.cc								\
   table/block_based/block_based_table_factory.cc                \
   table/block_based/block_based_table_iterator.cc               \
   table/block_based/block_based_table_reader.cc                 \
@@ -199,7 +200,6 @@ LIB_SOURCES =                                                   \
   table/format.cc                                               \
   table/get_context.cc                                          \
   table/iterator.cc                                             \
-  table/last_level_iterator.cc									\
   table/merging_iterator.cc                                     \
   table/meta_blocks.cc                                          \
   table/persistent_cache_helper.cc                              \

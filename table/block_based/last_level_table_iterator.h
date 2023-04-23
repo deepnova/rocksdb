@@ -12,10 +12,10 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-class LastLevelIterator final : public InternalIterator {
+class LastLevelTableIterator final : public InternalIterator {
  public:
   // @param read_options Must outlive this iterator.
-  LastLevelIterator(
+  LastLevelTableIterator(
       TableCache* table_cache, const ReadOptions& read_options,
       const FileOptions& file_options, const InternalKeyComparator& icomparator,
       const LevelFilesBrief* flevel,
@@ -54,7 +54,7 @@ class LastLevelIterator final : public InternalIterator {
     }
   }
 
-  ~LastLevelIterator() override { delete file_iter_.Set(nullptr); }
+  ~LastLevelTableIterator() override { delete file_iter_.Set(nullptr); }
 
   // Seek to the first file with a key >= target.
   // If range_tombstone_iter_ is not nullptr, then we pretend that file

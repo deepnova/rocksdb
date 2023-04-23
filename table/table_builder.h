@@ -86,6 +86,8 @@ struct TableReaderOptions {
 
   // Known unique_id or {}, kNullUniqueId64x2 means unknown
   UniqueId64x2 unique_id;
+
+  bool is_s3_storage = false;
 };
 
 struct TableBuilderOptions {

@@ -178,6 +178,84 @@ Status TableCache::GetTableReader(
   return s;
 }
 
+Status TableCache::GetTableReaderV2(
+    const ReadOptions& ro, const FileOptions& file_options,
+    const InternalKeyComparator& internal_comparator,
+    const FileMetaData& file_meta, bool sequential_mode, bool record_read_stats,
+    HistogramImpl* file_read_hist, std::unique_ptr<TableReader>* table_reader,
+    const std::shared_ptr<const SliceTransform>& prefix_extractor,
+    bool skip_filters, int level, bool prefetch_index_and_filter_in_cache,
+    size_t max_file_size_for_l0_meta_pin, Temperature file_temperature) {
+
+ UniqueId64x2 expected_unique_id;
+ if (ioptions_.verify_sst_unique_id_in_manifest) {
+   expected_unique_id = file_meta.unique_id;
+ } else {
+   expected_unique_id = kNullUniqueId64x2;  // null ID == no verification
+ }
+  TableReaderOptions table_reader_options(
+                          ioptions_, prefix_extractor, file_options,
+                          internal_comparator, skip_filters, immortal_tables_,
+                          false /* force_direct_prefetch */, level,
+                          block_cache_tracer_, max_file_size_for_l0_meta_pin,
+                          db_session_id_, file_meta.fd.GetNumber(),
+                          expected_unique_id, file_meta.fd.largest_seqno);
+  if(ro.is_delta_scan && level == ioptions_.num_levels - 1/*is_last_level?*/){
+    table_reader_options.is_s3_storage = true;
+  }
+
+  if(table_reader_options.is_s3_storage == true)
+  {
+    //Tarim-TODO: ();
+    //return GetLastLevelTableReader();
+  }
+
+  std::string fname = TableFileName(
+      ioptions_.cf_paths, file_meta.fd.GetNumber(), file_meta.fd.GetPathId());
+  std::unique_ptr<FSRandomAccessFile> file;
+  FileOptions fopts = file_options;
+  fopts.temperature = file_temperature;
+  Status s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
+  TEST_SYNC_POINT_CALLBACK("TableCache::GetTableReader:BeforeOpenFile",
+                           const_cast<Status*>(&s));
+  if (s.ok()) {
+    s = ioptions_.fs->NewRandomAccessFile(fname, fopts, &file, nullptr);
+  }
+  if (s.ok()) {
+    RecordTick(ioptions_.stats, NO_FILE_OPENS);
+  } else if (s.IsPathNotFound()) {
+    fname = Rocks2LevelTableFileName(fname);
+    s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
+    if (s.ok()) {
+      s = ioptions_.fs->NewRandomAccessFile(fname, file_options, &file,
+                                            nullptr);
+    }
+    if (s.ok()) {
+      RecordTick(ioptions_.stats, NO_FILE_OPENS);
+    }
+  }
+
+  if (s.ok()) {
+    if (!sequential_mode && ioptions_.advise_random_on_open) {
+      file->Hint(FSRandomAccessFile::kRandom);
+    }
+    StopWatch sw(ioptions_.clock, ioptions_.stats, TABLE_OPEN_IO_MICROS);
+    std::unique_ptr<RandomAccessFileReader> file_reader(
+        new RandomAccessFileReader(
+            std::move(file), fname, ioptions_.clock, io_tracer_,
+            record_read_stats ? ioptions_.stats : nullptr, SST_READ_MICROS,
+            file_read_hist, ioptions_.rate_limiter.get(), ioptions_.listeners,
+            file_temperature, level == ioptions_.num_levels - 1));
+    s = ioptions_.table_factory->NewTableReader(
+        ro,
+        table_reader_options,
+        std::move(file_reader), file_meta.fd.GetFileSize(), table_reader,
+        prefetch_index_and_filter_in_cache);
+    TEST_SYNC_POINT("TableCache::GetTableReader:0");
+  }
+  return s;
+}
+
 void TableCache::EraseHandle(const FileDescriptor& fd, Cache::Handle* handle) {
   ReleaseHandle(handle);
   uint64_t number = fd.GetNumber();
@@ -213,7 +291,7 @@ Status TableCache::FindTable(
 
     std::unique_ptr<TableReader> table_reader;
     Status s =
-        GetTableReader(ro, file_options, internal_comparator, file_meta,
+        GetTableReaderV2(ro, file_options, internal_comparator, file_meta,
                        false /* sequential mode */, record_read_stats,
                        file_read_hist, &table_reader, prefix_extractor,
                        skip_filters, level, prefetch_index_and_filter_in_cache,
