@@ -360,7 +360,7 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
 
   // for Tarim
   TableModel table_model = TableModel::kDeltaMain;
-  std::string last_level_main_path; // path for last level data storage on main layer.
+  std::string last_level_main_path; //Tarim: path for last level data storage on main layer.
   GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
   avro::ValidSchema schema_;
 

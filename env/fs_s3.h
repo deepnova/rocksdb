@@ -71,11 +71,22 @@ class S3FileSystem : public FileSystem {
     return IOStatus::NotSupported("S3FileSystem not supported NewSequentialFile().");
   }
 
-  IOStatus NewRandomAccessFile(const std::string& /*fname*/,
-                               const FileOptions& /*options*/,
-                               std::unique_ptr<FSRandomAccessFile>* /*result*/,
+  IOStatus NewRandomAccessFile(const std::string& fname,
+                               const FileOptions& options,
+                               std::unique_ptr<FSRandomAccessFile>* result,
                                IODebugContext* /*dbg*/) override {
-    return IOStatus::NotSupported("S3FileSystem not supported NewRandomAccessFile().");
+    result->reset();
+
+    arrow::Result<std::shared_ptr<arrow::io::RandomAccessFile>> result2 = fs_->OpenInputFile(fname);
+    if(result2.status().code() != ::arrow::StatusCode::OK) {
+      std::cerr << "S3RandomAccessFile open error, file: " << fname
+                << ", status: " << result2.status().CodeAsString() << std::endl;
+      return IOStatus::IOError(result2.status().message());
+    }
+
+    result->reset(new S3RandomAccessFile(fname, std::move(result2).ValueOrDie(), options));
+
+    return IOStatus::OK();
   }
 
   virtual IOStatus OpenWritableFile(const std::string& fname,

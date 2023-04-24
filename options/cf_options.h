@@ -86,6 +86,8 @@ struct ImmutableCFOptions {
   std::shared_ptr<SstPartitionerFactory> sst_partitioner_factory;
 
   std::shared_ptr<Cache> blob_cache;
+
+  std::string last_level_main_path; //Tarim: path for last level data storage on main layer.
 };
 
 struct ImmutableOptions : public ImmutableDBOptions, public ImmutableCFOptions {

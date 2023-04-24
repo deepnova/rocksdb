@@ -760,7 +760,7 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       compaction_service(options.compaction_service),
       enforce_single_del_contracts(options.enforce_single_del_contracts) {
   fs = env->GetFileSystem();
-  last_level_fs = env->GetLastLevelFileSystem(options.s3_endpoint);
+  last_level_fs = env->GetLastLevelFileSystem(options.s3_endpoint); //Tarim-TODO: only delta-main and main-only table mode
   clock = env->GetSystemClock().get();
   logger = info_log.get();
   stats = statistics.get();

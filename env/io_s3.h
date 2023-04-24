@@ -87,34 +87,6 @@ class S3WritableFile : public FSWritableFile {
 
 };
 
-/*
-//Tarim-TODO: used by manifest and log files, should not need.
-class S3SequentialFile : public FSSequentialFile {
- private:
-  std::string filename_;
-  //FILE* file_; //Tarim-TODO: S3 handler
-  //int fd_;
-  size_t logical_sector_size_;
-
- public:
-  S3SequentialFile(const std::string& fname, FILE* file, int fd,
-                      size_t logical_block_size, const EnvOptions& options);
-  virtual ~S3SequentialFile();
-
-  virtual IOStatus Read(size_t n, const IOOptions& opts, Slice* result,
-                        char* scratch, IODebugContext* dbg) override;
-  virtual IOStatus PositionedRead(uint64_t offset, size_t n,
-                                  const IOOptions& opts, Slice* result,
-                                  char* scratch, IODebugContext* dbg) override;
-  virtual IOStatus Skip(uint64_t n) override;
-  virtual IOStatus InvalidateCache(size_t offset, size_t length) override;
-  virtual bool use_direct_io() const override { return false; }
-  virtual size_t GetRequiredBufferAlignment() const override {
-    return logical_sector_size_;
-  }
-};
-*/
-
 class S3Directory : public FSDirectory {
  public:
   explicit S3Directory(const std::string& directory_name)
@@ -136,6 +108,54 @@ class S3Directory : public FSDirectory {
 
  private:
   const std::string directory_name_;
+};
+
+class S3RandomAccessFile : public FSRandomAccessFile {
+ protected:
+  std::string filename_;
+  std::shared_ptr<arrow::io::RandomAccessFile> file_;
+  bool use_direct_io_ = false;
+  size_t logical_sector_size_ = 4096;
+
+ public:
+  S3RandomAccessFile(const std::string filename,
+                     std::shared_ptr<arrow::io::RandomAccessFile> file,
+                     const EnvOptions& /*options*/)
+      : filename_(filename),
+        file_(std::move(file))
+  {}
+
+  virtual ~S3RandomAccessFile();
+
+  std::shared_ptr<arrow::io::RandomAccessFile> GetRandomAccessFile(){
+    return file_;
+  }
+
+  virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions& opts,
+                        Slice* result, char* scratch,
+                        IODebugContext* dbg) const override;
+
+  virtual IOStatus MultiRead(FSReadRequest* reqs, size_t num_reqs,
+                             const IOOptions& options,
+                             IODebugContext* dbg) override;
+
+  virtual IOStatus Prefetch(uint64_t offset, size_t n, const IOOptions& opts,
+                            IODebugContext* dbg) override;
+
+#if defined(OS_LINUX) || defined(OS_MACOSX) || defined(OS_AIX)
+  virtual size_t GetUniqueId(char* id, size_t max_size) const override;
+#endif
+  virtual void Hint(AccessPattern pattern) override;
+  virtual IOStatus InvalidateCache(size_t offset, size_t length) override;
+  virtual bool use_direct_io() const override { return use_direct_io_; }
+  virtual size_t GetRequiredBufferAlignment() const override {
+    return logical_sector_size_;
+  }
+  // EXPERIMENTAL
+  virtual IOStatus ReadAsync(
+      FSReadRequest& req, const IOOptions& opts,
+      std::function<void(const FSReadRequest&, void*)> cb, void* cb_arg,
+      void** io_handle, IOHandleDeleter* del_fn, IODebugContext* dbg) override;
 };
 
 }

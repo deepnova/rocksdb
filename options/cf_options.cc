@@ -919,7 +919,8 @@ ImmutableCFOptions::ImmutableCFOptions(const ColumnFamilyOptions& cf_options)
       cf_paths(cf_options.cf_paths),
       compaction_thread_limiter(cf_options.compaction_thread_limiter),
       sst_partitioner_factory(cf_options.sst_partitioner_factory),
-      blob_cache(cf_options.blob_cache) {}
+      blob_cache(cf_options.blob_cache),
+      last_level_main_path(cf_options.last_level_main_path) {}
 
 ImmutableOptions::ImmutableOptions() : ImmutableOptions(Options()) {}
 

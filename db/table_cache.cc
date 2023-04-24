@@ -187,12 +187,12 @@ Status TableCache::GetTableReaderV2(
     bool skip_filters, int level, bool prefetch_index_and_filter_in_cache,
     size_t max_file_size_for_l0_meta_pin, Temperature file_temperature) {
 
- UniqueId64x2 expected_unique_id;
- if (ioptions_.verify_sst_unique_id_in_manifest) {
-   expected_unique_id = file_meta.unique_id;
- } else {
-   expected_unique_id = kNullUniqueId64x2;  // null ID == no verification
- }
+  UniqueId64x2 expected_unique_id;
+  if (ioptions_.verify_sst_unique_id_in_manifest) {
+    expected_unique_id = file_meta.unique_id;
+  } else {
+    expected_unique_id = kNullUniqueId64x2;  // null ID == no verification
+  }
   TableReaderOptions table_reader_options(
                           ioptions_, prefix_extractor, file_options,
                           internal_comparator, skip_filters, immortal_tables_,
@@ -204,34 +204,43 @@ Status TableCache::GetTableReaderV2(
     table_reader_options.is_s3_storage = true;
   }
 
-  if(table_reader_options.is_s3_storage == true)
-  {
-    //Tarim-TODO: ();
-    //return GetLastLevelTableReader();
-  }
-
-  std::string fname = TableFileName(
-      ioptions_.cf_paths, file_meta.fd.GetNumber(), file_meta.fd.GetPathId());
   std::unique_ptr<FSRandomAccessFile> file;
+  std::string fname;
   FileOptions fopts = file_options;
   fopts.temperature = file_temperature;
   Status s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
   TEST_SYNC_POINT_CALLBACK("TableCache::GetTableReader:BeforeOpenFile",
                            const_cast<Status*>(&s));
-  if (s.ok()) {
-    s = ioptions_.fs->NewRandomAccessFile(fname, fopts, &file, nullptr);
-  }
-  if (s.ok()) {
-    RecordTick(ioptions_.stats, NO_FILE_OPENS);
-  } else if (s.IsPathNotFound()) {
-    fname = Rocks2LevelTableFileName(fname);
-    s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
+
+  // only last level for Tarim
+  if(table_reader_options.is_s3_storage == true)
+  {
+    fname = TableFileNameOnS3(ioptions_.last_level_main_path, file_meta.fd.GetNumber());
     if (s.ok()) {
-      s = ioptions_.fs->NewRandomAccessFile(fname, file_options, &file,
-                                            nullptr);
+      s = ioptions_.last_level_fs->NewRandomAccessFile(fname, fopts, &file, nullptr);
     }
     if (s.ok()) {
       RecordTick(ioptions_.stats, NO_FILE_OPENS);
+    }
+  }else{
+    // primitive process
+    fname = TableFileName(ioptions_.cf_paths, file_meta.fd.GetNumber(), 
+                          file_meta.fd.GetPathId());
+    if (s.ok()) {
+      s = ioptions_.fs->NewRandomAccessFile(fname, fopts, &file, nullptr);
+    }
+    if (s.ok()) {
+      RecordTick(ioptions_.stats, NO_FILE_OPENS);
+    } else if (s.IsPathNotFound()) {
+      fname = Rocks2LevelTableFileName(fname);
+      s = PrepareIOFromReadOptions(ro, ioptions_.clock, fopts.io_options);
+      if (s.ok()) {
+        s = ioptions_.fs->NewRandomAccessFile(fname, file_options, &file,
+                                              nullptr);
+      }
+      if (s.ok()) {
+        RecordTick(ioptions_.stats, NO_FILE_OPENS);
+      }
     }
   }
 

@@ -1,17 +1,27 @@
 
 #pragma once
 #include <memory>
+#include <arrow/io/file.h>
+#include <arrow/util/logging.h>
+#include <parquet/api/reader.h>
+//#include <parquet/api/writer.h>
 
+#include "cache/cache_key.h"
+#include "file/filename.h"
+#include "cache/cache_reservation_manager.h"
 #include "db/range_tombstone_fragmenter.h"
-#if USE_COROUTINES
-#include "folly/experimental/coro/Coroutine.h"
-#include "folly/experimental/coro/Task.h"
-#endif
+//#if USE_COROUTINES
+//#include "folly/experimental/coro/Coroutine.h"
+//#include "folly/experimental/coro/Task.h"
+//#endif
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/table_reader_caller.h"
+#include "table/table_reader.h"
 #include "table/get_context.h"
 #include "table/internal_iterator.h"
 #include "table/multiget_context.h"
+#include "trace_replay/block_cache_tracer.h"
+#include "table/unique_id_impl.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -23,8 +33,10 @@ struct ReadOptions;
 struct TableProperties;
 class GetContext;
 class MultiGetContext;
+class TailPrefetchStats;
+class S3RandomAccessFile;
 
-class LastLevelTableReader {
+class LastLevelTableReader : public TableReader {
  public:
   virtual ~LastLevelTableReader() {}
 
@@ -72,6 +84,9 @@ class LastLevelTableReader {
     return nullptr;
   }
 
+  // Size of all data blocks, maybe approximate
+  uint64_t GetApproximateDataSize();
+
   // Given a key, return an approximate byte offset in the file where
   // the data for that key begins (or would begin if the key were
   // present in the file).  The returned value is in terms of file
@@ -108,7 +123,7 @@ class LastLevelTableReader {
   virtual std::shared_ptr<const TableProperties> GetTableProperties() const;
 
   // Prepare work that can be done before the real Get()
-  virtual void Prepare(const Slice& /*target*/)
+  virtual void Prepare(const Slice& /*target*/);
 
   // Report an approximation of how much memory has been used.
   virtual size_t ApproximateMemoryUsage() const;
@@ -180,14 +195,20 @@ class LastLevelTableReader {
     return Status::NotSupported("VerifyChecksum() not supported");
   }
 
+  struct Rep;
+
  protected:
   std::unique_ptr<Rep> rep_;
-  explicit LastLevelTableReader(std::unique_ptr<Rep> rep, BlockCacheTracer* const block_cache_tracer)
-      : rep_(rep), block_cache_tracer_(block_cache_tracer) {}
+
+  explicit LastLevelTableReader(std::unique_ptr<Rep> rep, 
+                                BlockCacheTracer* const /*block_cache_tracer*/)
+      : rep_(std::move(rep)) {}
+
   // No copying allowed
   explicit LastLevelTableReader(const TableReader&) = delete;
   void operator=(const TableReader&) = delete;
-}
+
+};
 
 struct LastLevelTableReader::Rep {
   Rep(const ImmutableOptions& _ioptions, const EnvOptions& _env_options,
@@ -199,11 +220,11 @@ struct LastLevelTableReader::Rep {
         table_options(_table_opt),
         filter_policy(skip_filters ? nullptr : _table_opt.filter_policy.get()),
         internal_comparator(_internal_comparator),
-        filter_type(FilterType::kNoFilter),
-        index_type(BlockBasedTableOptions::IndexType::kBinarySearch),
-        whole_key_filtering(_table_opt.whole_key_filtering),
-        prefix_filtering(true),
-        global_seqno(kDisableGlobalSequenceNumber),
+        //filter_type(FilterType::kNoFilter),
+        //index_type(BlockBasedTableOptions::IndexType::kBinarySearch),
+        //whole_key_filtering(_table_opt.whole_key_filtering),
+        //prefix_filtering(true),
+        //global_seqno(kDisableGlobalSequenceNumber),
         file_size(_file_size),
         level(_level),
         immortal_table(_immortal_table) {}
@@ -214,7 +235,6 @@ struct LastLevelTableReader::Rep {
   const FilterPolicy* const filter_policy;
   const InternalKeyComparator& internal_comparator;
   Status status;
-  std::unique_ptr<RandomAccessFileReader> file;
 
   //OffsetableCacheKey base_cache_key;
   //PersistentCacheOptions persistent_cache_options;
@@ -274,6 +294,12 @@ struct LastLevelTableReader::Rep {
 
   const bool immortal_table;
 
+  //std::string filename;
+  std::unique_ptr<RandomAccessFileReader> file = nullptr;
+  S3RandomAccessFile *s3_random_access_file = nullptr;
+  std::unique_ptr<parquet::ParquetFileReader> parquet_reader = nullptr;
+  std::shared_ptr<parquet::FileMetaData> parquet_metadata = nullptr;
+
   std::unique_ptr<CacheReservationManager::CacheReservationHandle>
       table_reader_cache_res_handle = nullptr;
 
@@ -298,9 +324,9 @@ struct LastLevelTableReader::Rep {
 
   uint32_t level_for_tracing() const { return level >= 0 ? level : UINT32_MAX; }
 
-  uint64_t sst_number_for_tracing() const {
-    return file ? TableFileNameToNumber(file->file_name()) : UINT64_MAX;
-  }
+  //uint64_t sst_number_for_tracing() const {
+  //  return file ? TableFileNameToNumber(file->file_name()) : UINT64_MAX;
+  //}
 
   //void CreateFilePrefetchBuffer(
   //    size_t readahead_size, size_t max_readahead_size,
@@ -315,17 +341,17 @@ struct LastLevelTableReader::Rep {
   //      ioptions.stats));
   //}
 
-  void CreateFilePrefetchBufferIfNotExists(
-      size_t readahead_size, size_t max_readahead_size,
-      std::unique_ptr<FilePrefetchBuffer>* fpb, bool implicit_auto_readahead,
-      uint64_t num_file_reads,
-      uint64_t num_file_reads_for_auto_readahead) const {
-    if (!(*fpb)) {
-      CreateFilePrefetchBuffer(readahead_size, max_readahead_size, fpb,
-                               implicit_auto_readahead, num_file_reads,
-                               num_file_reads_for_auto_readahead);
-    }
-  }
+  //void CreateFilePrefetchBufferIfNotExists(
+  //    size_t readahead_size, size_t max_readahead_size,
+  //    std::unique_ptr<FilePrefetchBuffer>* fpb, bool implicit_auto_readahead,
+  //    uint64_t num_file_reads,
+  //    uint64_t num_file_reads_for_auto_readahead) const {
+  //  if (!(*fpb)) {
+  //    CreateFilePrefetchBuffer(readahead_size, max_readahead_size, fpb,
+  //                             implicit_auto_readahead, num_file_reads,
+  //                             num_file_reads_for_auto_readahead);
+  //  }
+  //}
 
   std::size_t ApproximateMemoryUsage() const {
     std::size_t usage = 0;
