@@ -72,7 +72,7 @@ Status AdaptiveTableFactory::NewTableReader(
 
 TableBuilder* AdaptiveTableFactory::NewTableBuilder(
     const TableBuilderOptions& table_builder_options,
-    WritableFileWriter* file) const {
+    AbstractWritableFileWriter* file) const {
   return table_factory_to_write_->NewTableBuilder(table_builder_options, file);
 }
 

@@ -157,8 +157,8 @@ void PartitionedIndexBuilder::MakeNewSubIndexBuilder() {
       // Note: this is sub-optimal since sub_index_builder_ could later reset
       // seperator_is_key_plus_seq_ but the probability of that is low.
       sub_index_builder_->seperator_is_key_plus_seq_
-          ? sub_index_builder_->index_block_builder_
-          : sub_index_builder_->index_block_builder_without_seq_));
+          ? &sub_index_builder_->index_block_builder_
+          : &sub_index_builder_->index_block_builder_without_seq_));
   partition_cut_requested_ = false;
 }
 
@@ -185,7 +185,7 @@ void PartitionedIndexBuilder::AddIndexEntry(
       seperator_is_key_plus_seq_ = true;
       flush_policy_.reset(FlushBlockBySizePolicyFactory::NewFlushBlockPolicy(
           table_opt_.metadata_block_size, table_opt_.block_size_deviation,
-          sub_index_builder_->index_block_builder_));
+          &sub_index_builder_->index_block_builder_));
     }
     sub_index_last_key_ = std::string(*last_key_in_current_block);
     entries_.push_back(
@@ -223,7 +223,7 @@ void PartitionedIndexBuilder::AddIndexEntry(
       seperator_is_key_plus_seq_ = true;
       flush_policy_.reset(FlushBlockBySizePolicyFactory::NewFlushBlockPolicy(
           table_opt_.metadata_block_size, table_opt_.block_size_deviation,
-          sub_index_builder_->index_block_builder_));
+          &sub_index_builder_->index_block_builder_));
     }
   }
 }

@@ -260,7 +260,7 @@ struct BlockBasedTableBuilder::Rep {
   const MutableCFOptions moptions;
   const BlockBasedTableOptions table_options;
   const InternalKeyComparator& internal_comparator;
-  WritableFileWriter* file;
+  AbstractWritableFileWriter* file;
   std::atomic<uint64_t> offset;
   size_t alignment;
   BlockBuilder data_block;
@@ -402,7 +402,7 @@ struct BlockBasedTableBuilder::Rep {
   }
 
   Rep(const BlockBasedTableOptions& table_opt, const TableBuilderOptions& tbo,
-      WritableFileWriter* f)
+      AbstractWritableFileWriter* f)
       : ioptions(tbo.ioptions),
         moptions(tbo.moptions),
         table_options(table_opt),
@@ -442,7 +442,7 @@ struct BlockBasedTableBuilder::Rep {
         reason(tbo.reason),
         flush_block_policy(
             table_options.flush_block_policy_factory->NewFlushBlockPolicy(
-                table_options, data_block)),
+                table_options, &data_block)),
         status_ok(true),
         io_status_ok(true) {
     if (tbo.target_file_size == 0) {
@@ -880,7 +880,7 @@ struct BlockBasedTableBuilder::ParallelCompressionRep {
 
 BlockBasedTableBuilder::BlockBasedTableBuilder(
     const BlockBasedTableOptions& table_options, const TableBuilderOptions& tbo,
-    WritableFileWriter* file) {
+    AbstractWritableFileWriter* file) {
   BlockBasedTableOptions sanitized_table_options(table_options);
   if (sanitized_table_options.format_version == 0 &&
       sanitized_table_options.checksum != kCRC32c) {

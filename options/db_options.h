@@ -101,6 +101,7 @@ struct ImmutableDBOptions {
   CacheTier lowest_used_cache_tier;
   // Convenience/Helper objects that are not part of the base DBOptions
   std::shared_ptr<FileSystem> fs;
+  std::shared_ptr<FileSystem> last_level_fs;
   SystemClock* clock;
   Statistics* stats;
   Logger* logger;

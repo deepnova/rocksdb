@@ -29,6 +29,7 @@
 #include "rocksdb/utilities/options_type.h"
 #include "table/block_based/block_based_table_builder.h"
 #include "table/block_based/block_based_table_reader.h"
+#include "table/block_based/last_level_table_builder.h"
 #include "table/format.h"
 #include "util/mutexlock.h"
 #include "util/string_util.h"
@@ -619,25 +620,34 @@ Status BlockBasedTableFactory::NewTableReader(
     std::unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
     std::unique_ptr<TableReader>* table_reader,
     bool prefetch_index_and_filter_in_cache) const {
-  return BlockBasedTable::Open(
-      ro, table_reader_options.ioptions, table_reader_options.env_options,
-      table_options_, table_reader_options.internal_comparator, std::move(file),
-      file_size, table_reader, table_reader_cache_res_mgr_,
-      table_reader_options.prefix_extractor, prefetch_index_and_filter_in_cache,
-      table_reader_options.skip_filters, table_reader_options.level,
-      table_reader_options.immortal, table_reader_options.largest_seqno,
-      table_reader_options.force_direct_prefetch, &tail_prefetch_stats_,
-      table_reader_options.block_cache_tracer,
-      table_reader_options.max_file_size_for_l0_meta_pin,
-      table_reader_options.cur_db_session_id, table_reader_options.cur_file_num,
-      table_reader_options.unique_id);
+  if(table_reader_options.is_s3_storage == true){
+    //Tarim-TODO: LastLevelTableReader::Open()
+    return Status::NotSupported("not complete");
+  }else{
+    return BlockBasedTable::Open(
+        ro, table_reader_options.ioptions, table_reader_options.env_options,
+        table_options_, table_reader_options.internal_comparator, std::move(file),
+        file_size, table_reader, table_reader_cache_res_mgr_,
+        table_reader_options.prefix_extractor, prefetch_index_and_filter_in_cache,
+        table_reader_options.skip_filters, table_reader_options.level,
+        table_reader_options.immortal, table_reader_options.largest_seqno,
+        table_reader_options.force_direct_prefetch, &tail_prefetch_stats_,
+        table_reader_options.block_cache_tracer,
+        table_reader_options.max_file_size_for_l0_meta_pin,
+        table_reader_options.cur_db_session_id, table_reader_options.cur_file_num,
+        table_reader_options.unique_id);
+  }
 }
 
 TableBuilder* BlockBasedTableFactory::NewTableBuilder(
     const TableBuilderOptions& table_builder_options,
-    WritableFileWriter* file) const {
-  return new BlockBasedTableBuilder(table_options_, table_builder_options,
-                                    file);
+    AbstractWritableFileWriter* file) const {
+  if(table_builder_options.is_s3_storage == true){
+    //for Tarim
+    return new LastLevelTableBuilder(table_options_, table_builder_options, file);
+  }else{
+    return new BlockBasedTableBuilder(table_options_, table_builder_options, file);
+  }
 }
 
 Status BlockBasedTableFactory::ValidateOptions(

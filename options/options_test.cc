@@ -58,7 +58,7 @@ class UnregisteredTableFactory : public TableFactory {
     return Status::NotSupported();
   }
   TableBuilder* NewTableBuilder(const TableBuilderOptions&,
-                                WritableFileWriter*) const override {
+                                AbstractWritableFileWriter*) const override {
     return nullptr;
   }
 };

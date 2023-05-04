@@ -260,7 +260,7 @@ Status MockTableFactory::NewTableReader(
 
 TableBuilder* MockTableFactory::NewTableBuilder(
     const TableBuilderOptions& /*table_builder_options*/,
-    WritableFileWriter* file) const {
+    AbstractWritableFileWriter* file) const {
   uint32_t id;
   Status s = GetAndWriteNextID(file, &id);
   assert(s.ok());
@@ -285,7 +285,7 @@ Status MockTableFactory::CreateMockTable(Env* env, const std::string& fname,
   return s;
 }
 
-Status MockTableFactory::GetAndWriteNextID(WritableFileWriter* file,
+Status MockTableFactory::GetAndWriteNextID(AbstractWritableFileWriter* file,
                                            uint32_t* next_id) const {
   *next_id = next_id_.fetch_add(1);
   char buf[4];

@@ -86,6 +86,8 @@ struct TableReaderOptions {
 
   // Known unique_id or {}, kNullUniqueId64x2 means unknown
   UniqueId64x2 unique_id;
+
+  bool is_s3_storage = false;
 };
 
 struct TableBuilderOptions {
@@ -144,6 +146,8 @@ struct TableBuilderOptions {
   // in the table options of the ioptions.table_factory
   bool skip_filters = false;
   const uint64_t cur_file_num;
+
+  bool is_s3_storage = false;
 };
 
 // TableBuilder provides the interface used to build a Table

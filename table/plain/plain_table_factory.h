@@ -169,7 +169,7 @@ class PlainTableFactory : public TableFactory {
 
   TableBuilder* NewTableBuilder(
       const TableBuilderOptions& table_builder_options,
-      WritableFileWriter* file) const override;
+      AbstractWritableFileWriter* file) const override;
 
   std::string GetPrintableOptions() const override;
   static const char kValueTypeSeqId0 = char(~0);

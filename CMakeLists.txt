@@ -573,7 +573,7 @@ if(HAVE_SCHED_GETCPU)
   add_definitions(-DROCKSDB_SCHED_GETCPU_PRESENT)
 endif()
 
-check_cxx_symbol_exists(getauxval auvx.h HAVE_AUXV_GETAUXVAL)
+check_cxx_symbol_exists(getauxval auvx
 if(HAVE_AUXV_GETAUXVAL)
   add_definitions(-DROCKSDB_AUXV_GETAUXVAL_PRESENT)
 endif()
@@ -762,6 +762,7 @@ set(SOURCES
         file/sequence_file_reader.cc
         file/sst_file_manager_impl.cc
         file/writable_file_writer.cc
+        file/parquet_file_writer.cc
         logging/auto_roll_logger.cc
         logging/event_logger.cc
         logging/log_buffer.cc
@@ -822,6 +823,7 @@ set(SOURCES
         table/block_based/partitioned_index_reader.cc
         table/block_based/reader_common.cc
         table/block_based/uncompression_dict_reader.cc
+        table/block_based/last_level_block_builder.cc
         table/block_fetcher.cc
         table/cuckoo/cuckoo_table_builder.cc
         table/cuckoo/cuckoo_table_factory.cc

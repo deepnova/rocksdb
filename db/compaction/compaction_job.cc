@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 
+#include <avro/Compiler.hh>
+
 #include "db/blob/blob_counting_iterator.h"
 #include "db/blob/blob_file_addition.h"
 #include "db/blob/blob_file_builder.h"
@@ -36,6 +38,7 @@
 #include "file/filename.h"
 #include "file/read_write_util.h"
 #include "file/sst_file_manager_impl.h"
+#include "file/parquet_file_writer.h"
 #include "file/writable_file_writer.h"
 #include "logging/log_buffer.h"
 #include "logging/logging.h"
@@ -162,6 +165,7 @@ CompactionJob::CompactionJob(
       env_(db_options.env),
       io_tracer_(io_tracer),
       fs_(db_options.fs, io_tracer),
+      last_level_fs_(db_options.last_level_fs, io_tracer),
       file_options_for_read_(
           fs_->OptimizeForCompactionTableRead(file_options, db_options_)),
       versions_(versions),
@@ -1752,11 +1756,15 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
                                                CompactionOutputs& outputs) {
   assert(sub_compact != nullptr);
 
-  // no need to lock because VersionSet::next_file_number_ is atomic
-  uint64_t file_number = versions_->NewFileNumber();
-  std::string fname = GetTableFileName(file_number);
   // Fire events.
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
+
+  // no need to lock because VersionSet::next_file_number_ is atomic
+  uint64_t file_number = versions_->NewFileNumber();
+  std::string fname = GetTableFileNameV2(file_number, 
+                                         cfd->initial_cf_options().last_level_main_path, 
+                                         sub_compact->compaction->is_s3_storage());
+
 #ifndef ROCKSDB_LITE
   EventHelpers::NotifyTableFileCreationStarted(
       cfd->ioptions()->listeners, dbname_, cfd->GetName(), fname, job_id_,
@@ -1784,7 +1792,12 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
   fo_copy.temperature = temperature;
 
   Status s;
-  IOStatus io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
+  IOStatus io_s;
+  if(sub_compact->compaction->is_s3_storage()) {
+    io_s = NewWritableFile(last_level_fs_.get(), fname, &writable_file, fo_copy);
+  }else{
+    io_s = NewWritableFile(fs_.get(), fname, &writable_file, fo_copy);
+  }
   s = io_s;
   if (sub_compact->io_status.ok()) {
     sub_compact->io_status = io_s;
@@ -1867,10 +1880,23 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
       sub_compact->compaction->OutputFilePreallocationSize()));
   const auto& listeners =
       sub_compact->compaction->immutable_options()->listeners;
-  outputs.AssignFileWriter(new WritableFileWriter(
-      std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
-      db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
-      tmp_set.Contains(FileType::kTableFile), false));
+
+  if(sub_compact->compaction->is_s3_storage()) {
+    ParquetFileWriter *fwriter = new ParquetFileWriter(
+        std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
+        db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
+        tmp_set.Contains(FileType::kTableFile), false);
+    //Tarim-TODO: cfd->initial_cf_options() is const and it a copy, the current getting schema method is not the best.
+    //            and has take out the 'const'.
+    const avro::ValidSchema* schema = cfd->initial_cf_options().GetSchema(cfd->GetName());
+    fwriter->SetSchema(schema);
+    outputs.AssignFileWriter(fwriter);
+  } else {
+    outputs.AssignFileWriter(new WritableFileWriter(
+        std::move(writable_file), fname, fo_copy, db_options_.clock, io_tracer_,
+        db_options_.stats, listeners, db_options_.file_checksum_gen_factory.get(),
+        tmp_set.Contains(FileType::kTableFile), false));
+  }
 
   TableBuilderOptions tboptions(
       *cfd->ioptions(), *(sub_compact->compaction->mutable_cf_options()),
@@ -1882,6 +1908,7 @@ Status CompactionJob::OpenCompactionOutputFile(SubcompactionState* sub_compact,
       0 /* oldest_key_time */, current_time, db_id_, db_session_id_,
       sub_compact->compaction->max_output_file_size(), file_number);
 
+  tboptions.is_s3_storage = sub_compact->compaction->is_s3_storage();
   outputs.NewBuilder(tboptions);
 
   LogFlush(db_options_.info_log);
@@ -2042,6 +2069,17 @@ void CompactionJob::LogCompaction() {
 std::string CompactionJob::GetTableFileName(uint64_t file_number) {
   return TableFileName(compact_->compaction->immutable_options()->cf_paths,
                        file_number, compact_->compaction->output_path_id());
+}
+
+std::string CompactionJob::GetTableFileNameV2(uint64_t file_number, 
+                                              const std::string& main_path,
+                                              bool is_s3_storage) {
+  if(is_s3_storage == false){
+    return TableFileName(compact_->compaction->immutable_options()->cf_paths,
+                       file_number, compact_->compaction->output_path_id());
+  }else{
+    return TableFileNameOnS3(main_path, file_number);
+  }
 }
 
 Env::IOPriority CompactionJob::GetRateLimiterPriority() {

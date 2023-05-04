@@ -243,6 +243,18 @@ class TableCache {
       size_t max_file_size_for_l0_meta_pin = 0,
       Temperature file_temperature = Temperature::kUnknown);
 
+  Status GetTableReaderV2(
+      const ReadOptions& ro, const FileOptions& file_options,
+      const InternalKeyComparator& internal_comparator,
+      const FileMetaData& file_meta, bool sequential_mode,
+      bool record_read_stats, HistogramImpl* file_read_hist,
+      std::unique_ptr<TableReader>* table_reader,
+      const std::shared_ptr<const SliceTransform>& prefix_extractor = nullptr,
+      bool skip_filters = false, int level = -1,
+      bool prefetch_index_and_filter_in_cache = true,
+      size_t max_file_size_for_l0_meta_pin = 0,
+      Temperature file_temperature = Temperature::kUnknown);
+
   // Update the max_covering_tombstone_seq in the GetContext for each key based
   // on the range deletions in the table
   void UpdateRangeTombstoneSeqnums(const ReadOptions& options, TableReader* t,

@@ -39,7 +39,7 @@ class BlobFileCompletionCallback;
 
 // Convenience function for NewTableBuilder on the embedded table_factory.
 TableBuilder* NewTableBuilder(const TableBuilderOptions& tboptions,
-                              WritableFileWriter* file);
+                              AbstractWritableFileWriter* file);
 
 // Build a Table file from the contents of *iter.  The generated file
 // will be named according to number specified in meta. On success, the rest of

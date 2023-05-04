@@ -720,8 +720,10 @@ std::unique_ptr<CompactionFilter> Compaction::CreateCompactionFilter() const {
 
 std::unique_ptr<SstPartitioner> Compaction::CreateSstPartitioner() const {
   if (!immutable_options_.sst_partitioner_factory) {
+    printf("[tarim] sst_partitioner_factory is null"); //TODO: logger?
     return nullptr;
   }
+  printf("[tarim] sst_partitioner_factory is not null, type: %s", immutable_options_.sst_partitioner_factory->Type()); //TODO: logger?
 
   SstPartitioner::Context context;
   context.is_full_compaction = is_full_compaction_;

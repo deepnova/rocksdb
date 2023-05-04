@@ -162,7 +162,7 @@ class Compaction {
     return &inputs_[compaction_input_level].files;
   }
 
-  const std::vector<CompactionInputFiles>* inputs() { return &inputs_; }
+  const std::vector<CompactionInputFiles>* inputs() const { return &inputs_; }
 
   // Returns the LevelFilesBrief of the specified compaction input level.
   const LevelFilesBrief* input_levels(size_t compaction_input_level) const {
@@ -227,6 +227,12 @@ class Compaction {
   // Is the compaction compact to the last level
   bool is_last_level() const {
     return output_level_ == immutable_options_.num_levels - 1;
+  }
+
+  // Is the last level data store to S3/HDFS
+  bool is_s3_storage() const {
+    return is_last_level() && 
+           column_family_data()->initial_cf_options().table_model == TableModel::kDeltaMain;
   }
 
   // Does this compaction include all sst files?

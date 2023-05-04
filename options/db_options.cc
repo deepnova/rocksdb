@@ -760,6 +760,7 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       compaction_service(options.compaction_service),
       enforce_single_del_contracts(options.enforce_single_del_contracts) {
   fs = env->GetFileSystem();
+  last_level_fs = env->GetLastLevelFileSystem(options.s3_endpoint); //Tarim-TODO: only delta-main and main-only table mode
   clock = env->GetSystemClock().get();
   logger = info_log.get();
   stats = statistics.get();
@@ -784,6 +785,8 @@ void ImmutableDBOptions::Dump(Logger* log) const {
                    env);
   ROCKS_LOG_HEADER(log, "                                     Options.fs: %s",
                    fs->Name());
+  ROCKS_LOG_HEADER(log, "                          Options.last_level_fs: %s",
+                   last_level_fs->Name());
   ROCKS_LOG_HEADER(log, "                               Options.info_log: %p",
                    info_log.get());
   ROCKS_LOG_HEADER(log, "               Options.max_file_opening_threads: %d",

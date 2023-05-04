@@ -82,7 +82,7 @@ inline Status PlainTableKeyDecoder::DecodeSize(uint32_t start_offset,
 }
 
 IOStatus PlainTableKeyEncoder::AppendKey(const Slice& key,
-                                         WritableFileWriter* file,
+                                         AbstractWritableFileWriter* file,
                                          uint64_t* offset, char* meta_bytes_buf,
                                          size_t* meta_bytes_buf_size) {
   ParsedInternalKey parsed_key;

@@ -43,7 +43,7 @@ class BlockBasedTableBuilder : public TableBuilder {
   // caller to close the file after calling Finish().
   BlockBasedTableBuilder(const BlockBasedTableOptions& table_options,
                          const TableBuilderOptions& table_builder_options,
-                         WritableFileWriter* file);
+                         AbstractWritableFileWriter* file);
 
   // No copying allowed
   BlockBasedTableBuilder(const BlockBasedTableBuilder&) = delete;

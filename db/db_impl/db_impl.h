@@ -2680,6 +2680,10 @@ class DBImpl : public DB {
   // seqno_time_mapping_ stores the sequence number to time mapping, it's not
   // thread safe, both read and write need db mutex hold.
   SeqnoToTimeMapping seqno_time_mapping_;
+
+  //TODO: supported update cache in futrue
+  //  first: cf name, second: schema in json(should be instead of avro schema or more convenient object)
+  std::map<std::string, std::string> schema_cache_;
 };
 
 class GetWithTimestampReadCallback : public ReadCallback {

@@ -106,6 +106,7 @@ LIB_SOURCES =                                                   \
   env/fs_remap.cc                                               \
   env/file_system_tracer.cc                                     \
   env/io_posix.cc                                               \
+  env/io_s3.cc                                               \
   env/mock_env.cc                                               \
   env/unique_id_gen.cc                                          \
   file/delete_scheduler.cc                                      \
@@ -119,6 +120,7 @@ LIB_SOURCES =                                                   \
   file/sequence_file_reader.cc                                  \
   file/sst_file_manager_impl.cc                                 \
   file/writable_file_writer.cc                                  \
+  file/parquet_file_writer.cc                                   \
   logging/auto_roll_logger.cc                                   \
   logging/event_logger.cc                                       \
   logging/log_buffer.cc                                         \
@@ -166,6 +168,10 @@ LIB_SOURCES =                                                   \
   table/block_based/binary_search_index_reader.cc               \
   table/block_based/block.cc                                    \
   table/block_based/block_based_table_builder.cc                \
+  table/block_based/last_level_block_builder.cc									\
+  table/block_based/last_level_table_builder.cc									\
+  table/block_based/last_level_table_reader.cc									\
+  table/block_based/last_level_table_iterator.cc								\
   table/block_based/block_based_table_factory.cc                \
   table/block_based/block_based_table_iterator.cc               \
   table/block_based/block_based_table_reader.cc                 \
@@ -187,6 +193,7 @@ LIB_SOURCES =                                                   \
   table/block_based/partitioned_index_reader.cc                 \
   table/block_based/reader_common.cc                            \
   table/block_based/uncompression_dict_reader.cc                \
+  table/block_based/avro_test.cc                                \
   table/block_fetcher.cc                                        \
   table/cuckoo/cuckoo_table_builder.cc                          \
   table/cuckoo/cuckoo_table_factory.cc                          \
@@ -488,6 +495,7 @@ TEST_MAIN_SOURCES =                                                     \
   db/deletefile_test.cc                                                 \
   db/error_handler_fs_test.cc                                           \
   db/external_sst_file_basic_test.cc                                    \
+  db/sst_partitioner_test.cc                                    		\
   db/external_sst_file_test.cc                                          \
   db/fault_injection_test.cc                                            \
   db/file_indexer_test.cc                                               \

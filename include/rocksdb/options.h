@@ -17,6 +17,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <avro/ValidSchema.hh>
+#include <avro/Compiler.hh>
+
 #include "rocksdb/advanced_options.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/compression_type.h"
@@ -61,6 +64,20 @@ struct Options;
 struct DbPath;
 
 using FileTypeSet = SmallEnumSet<FileType, FileType::kBlobFile>;
+
+typedef std::string (*GetSchemaCallBack)(std::string); //Tarim-TODO: not found the usage of std::function in JNI
+
+struct S3Endpoint {
+  std::string endpoint;
+  std::string access_key; 
+  std::string secret_key;
+};
+
+enum class TableModel : int8_t {
+    kDeltaOnly = 1,
+    kDeltaMain = 2,
+    kMainOnly  = 3
+};
 
 struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // The function recovers options to a previous version. Only 4.6 or later
@@ -340,6 +357,21 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   explicit ColumnFamilyOptions(const Options& options);
 
   void Dump(Logger* log) const;
+
+  // for Tarim
+  TableModel table_model = TableModel::kDeltaMain;
+  std::string last_level_main_path; //Tarim: path for last level data storage on main layer.
+  GetSchemaCallBack get_schema_callback_ = nullptr; //Tarim-TODO: not consider schema evolution yet
+  avro::ValidSchema schema_;
+
+  const avro::ValidSchema* GetSchema(const std::string &cfName) {
+    if(schema_.root()) return &schema_;
+    if(get_schema_callback_ == nullptr) return nullptr;
+    std::string schemaJson = get_schema_callback_(cfName);
+    schema_ = avro::compileJsonSchemaFromString(schemaJson); //Tarim-TODO: exception handling
+    return &schema_;
+  }
+
 };
 
 enum class WALRecoveryMode : char {
@@ -1401,6 +1433,8 @@ struct DBOptions {
   // of the contract leads to undefined behaviors with high possibility of data
   // inconsistency, e.g. deleted old data become visible again, etc.
   bool enforce_single_del_contracts = true;
+
+  S3Endpoint s3_endpoint;           //Tarim-TODO: HDFS?
 };
 
 // Options to control the behavior of a database (passed to DB::Open)
@@ -1706,6 +1740,8 @@ struct ReadOptions {
   //
   // Default: true
   bool optimize_multiget_for_io;
+
+  bool is_delta_scan = false; //Tarim: delta scan need take the ValueType out.
 
   ReadOptions();
   ReadOptions(bool cksum, bool cache);

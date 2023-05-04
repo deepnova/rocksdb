@@ -153,6 +153,33 @@ class InternalStats {
       this->num_output_files += stats.num_output_files;
       this->num_output_files_blob += stats.num_output_files_blob;
     }
+
+    //Tarim
+    uint64_t input_total_records = 0;
+    uint64_t input_total_size = 0;
+    uint64_t input_value_avg_size = 0;
+    //uint64_t output_total_records = 0; // == num_output_records
+    //uint64_t output_total_size = 0;    // == bytes_written
+    uint64_t output_row_avg_size = 0;
+    uint64_t remain_total_size = 0;
+
+    void Inputs(const std::vector<CompactionInputFiles>& inputs) {
+      for(size_t i = 0; i < inputs.size(); i++){
+        for(size_t j = 0; j < inputs[i].files.size(); j++){
+          //Tarim-TODO: get chunk prefix from smallest and largest key of FileMetaData.
+          const FileMetaData* fm = inputs[i].files[j];
+          input_total_records += fm->num_entries - fm->num_deletions;
+          input_total_size += fm->raw_value_size;
+        }
+      }
+      input_value_avg_size = static_cast<uint64_t>(input_total_size/input_total_records);
+    }
+
+    void UpdateRemainEstimateSize(){
+      output_row_avg_size = static_cast<uint64_t>(bytes_written/num_output_records);
+      remain_total_size = (input_total_records - num_output_records) * output_row_avg_size;
+    }
+
   };
 
   // Per level compaction stats.  comp_stats_[level] stores the stats for

@@ -1,16 +1,14 @@
-//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under both the GPLv2 (found in the
-//  COPYING file in the root directory) and Apache 2.0 License
-//  (found in the LICENSE.Apache file in the root directory).
-//
-// Copyright (c) 2011 The LevelDB Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-
 #pragma once
+
 #include <atomic>
 #include <string>
 
+#include <avro/Compiler.hh>
+//#include <arrow/filesystem/filesystem.h>
+//#include <arrow/filesystem/s3fs.h>
+#include <parquet/api/writer.h>
+
+#include "env/io_s3.h"
 #include "db/version_edit.h"
 #include "env/file_system_tracer.h"
 #include "port/port.h"
@@ -21,91 +19,20 @@
 #include "rocksdb/rate_limiter.h"
 #include "test_util/sync_point.h"
 #include "util/aligned_buffer.h"
+#include "file/writable_file_writer.h"
 
 namespace ROCKSDB_NAMESPACE {
 class Statistics;
 class SystemClock;
 
-class AbstractWritableFileWriter { //Tarim-TODO: common code doing here
- public:
-  AbstractWritableFileWriter(const AbstractWritableFileWriter&) = delete;
-  AbstractWritableFileWriter& operator=(const AbstractWritableFileWriter&) = delete;
-  AbstractWritableFileWriter(){} 
-  virtual ~AbstractWritableFileWriter(){}
-  
-  /*virtual static IOStatus Create(const std::shared_ptr<FileSystem>& fs,
-                         const std::string& fname, const FileOptions& file_opts,
-                         std::unique_ptr<AbstractWritableFileWriter>* writer,
-                         IODebugContext* dbg) = 0;*/
-  //WritableFileWriter(const WritableFileWriter&) = delete;
-  //WritableFileWriter& operator=(const WritableFileWriter&) = delete;
-
-  //~WritableFileWriter() {
-  //  auto s = Close();
-  //  s.PermitUncheckedError();
-  //}
-
-  virtual std::string file_name() const = 0; 
-
-  // When this Append API is called, if the crc32c_checksum is not provided, we
-  // will calculate the checksum internally.
-  virtual IOStatus Append(const Slice& data, uint32_t crc32c_checksum = 0,
-                  Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
-
-  virtual IOStatus Pad(const size_t pad_bytes,
-               Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
-
-  virtual IOStatus Flush(Env::IOPriority op_rate_limiter_priority = Env::IO_TOTAL) = 0;
-
-  virtual IOStatus Close() = 0;
-
-  virtual IOStatus Sync(bool use_fsync) = 0;
-
-  // Sync only the data that was already Flush()ed. Safe to call concurrently
-  // with Append() and Flush(). If !writable_file_->IsSyncThreadSafe(),
-  // returns NotSupported status.
-  virtual IOStatus SyncWithoutFlush(bool use_fsync) = 0;
-
-  virtual uint64_t GetFileSize() const = 0; 
-
-  // Returns the size of data flushed to the underlying `FSWritableFile`.
-  // Expected to match `writable_file()->GetFileSize()`.
-  // The return value can serve as a lower-bound for the amount of data synced
-  // by a future call to `SyncWithoutFlush()`.
-  virtual uint64_t GetFlushedSize() const = 0;
-
-  virtual IOStatus InvalidateCache(size_t offset, size_t length) = 0;
-
-  virtual FSWritableFile* writable_file() const = 0;
-
-  virtual bool use_direct_io() = 0;
-  virtual bool BufferIsEmpty() = 0;
-
-  virtual void TEST_SetFileChecksumGenerator(
-      FileChecksumGenerator* checksum_generator) = 0;
-
-  virtual std::string GetFileChecksum() = 0;
-
-  virtual const char* GetFileChecksumFuncName() const = 0;
-
-  virtual bool seen_error() const = 0;
-  // For options of relaxed consistency, users might hope to continue
-  // operating on the file after an error happens.
-  virtual void reset_seen_error() = 0;
-  virtual void set_seen_error() = 0;
-
-  virtual IOStatus AssertFalseAndGetStatusForPrevError() = 0;
-
-};
-
-// WritableFileWriter is a wrapper on top of Env::WritableFile. It provides
+// ParquetFileWriter is a wrapper on top of Env::WritableFile. It provides
 // facilities to:
 // - Handle Buffered and Direct writes.
 // - Rate limit writes.
 // - Flush and Sync the data to the underlying filesystem.
 // - Notify any interested listeners on the completion of a write.
 // - Update IO stats.
-class WritableFileWriter : public AbstractWritableFileWriter {
+class ParquetFileWriter : public AbstractWritableFileWriter {
  private:
 #ifndef ROCKSDB_LITE
   void NotifyOnFileWriteFinish(
@@ -209,18 +136,20 @@ class WritableFileWriter : public AbstractWritableFileWriter {
 
   std::string file_name_;
   FSWritableFilePtr writable_file_;
+  S3WritableFile* s3_writable_file_; // pointer from writable_file_
   SystemClock* clock_;
-  AlignedBuffer buf_;
+  //std::shared_ptr<parquet::ParquetFileWriter> file_writer_;
   size_t max_buffer_size_;
+  
   // Actually written data size can be used for truncate
   // not counting padding data
-  std::atomic<uint64_t> filesize_;
-  std::atomic<uint64_t> flushed_size_;
+  std::atomic<uint64_t> filesize_; //Tarim-TODO: total size of the compaction.
+  std::atomic<uint64_t> flushed_size_; //Tarim-TODO: may not useful
 #ifndef ROCKSDB_LITE
   // This is necessary when we use unbuffered access
   // and writes must happen on aligned offsets
   // so we need to go back and write that page again
-  uint64_t next_write_offset_;
+  //uint64_t next_write_offset_;
 #endif  // ROCKSDB_LITE
   bool pending_sync_;
   std::atomic<bool> seen_error_;
@@ -237,7 +166,7 @@ class WritableFileWriter : public AbstractWritableFileWriter {
   Statistics* stats_;
   std::vector<std::shared_ptr<EventListener>> listeners_;
   std::unique_ptr<FileChecksumGenerator> checksum_generator_;
-  bool checksum_finalized_;
+  //bool checksum_finalized_;
   bool perform_data_verification_;
   uint32_t buffered_data_crc32c_checksum_;
   bool buffered_data_with_checksum_;
@@ -246,7 +175,7 @@ class WritableFileWriter : public AbstractWritableFileWriter {
 #endif  // ROCKSDB_LITE
 
  public:
-  WritableFileWriter(
+  ParquetFileWriter(
       std::unique_ptr<FSWritableFile>&& file, const std::string& _file_name,
       const FileOptions& options, SystemClock* clock = nullptr,
       const std::shared_ptr<IOTracer>& io_tracer = nullptr,
@@ -258,12 +187,12 @@ class WritableFileWriter : public AbstractWritableFileWriter {
       : file_name_(_file_name),
         writable_file_(std::move(file), io_tracer, _file_name),
         clock_(clock),
-        buf_(),
+        //buf_(),
         max_buffer_size_(options.writable_file_max_buffer_size),
         filesize_(0),
-        flushed_size_(0),
+        //flushed_size_(0),
 #ifndef ROCKSDB_LITE
-        next_write_offset_(0),
+        //next_write_offset_(0),
 #endif  // ROCKSDB_LITE
         pending_sync_(false),
         seen_error_(false),
@@ -273,7 +202,7 @@ class WritableFileWriter : public AbstractWritableFileWriter {
         stats_(stats),
         listeners_(),
         checksum_generator_(nullptr),
-        checksum_finalized_(false),
+        //checksum_finalized_(false),
         perform_data_verification_(perform_data_verification),
         buffered_data_crc32c_checksum_(0),
         buffered_data_with_checksum_(buffered_data_with_checksum) {
@@ -281,10 +210,10 @@ class WritableFileWriter : public AbstractWritableFileWriter {
     temperature_ = options.temperature;
 #endif  // ROCKSDB_LITE
     assert(!use_direct_io() || max_buffer_size_ > 0);
-    TEST_SYNC_POINT_CALLBACK("WritableFileWriter::WritableFileWriter:0",
+    TEST_SYNC_POINT_CALLBACK("ParquetFileWriter::ParquetFileWriter:0",
                              reinterpret_cast<void*>(max_buffer_size_));
-    buf_.Alignment(writable_file_->GetRequiredBufferAlignment());
-    buf_.AllocateNewBuffer(std::min((size_t)65536, max_buffer_size_));
+    //buf_.Alignment(writable_file_->GetRequiredBufferAlignment());
+    //buf_.AllocateNewBuffer(std::min((size_t)65536, max_buffer_size_));
 #ifndef ROCKSDB_LITE
     std::for_each(listeners.begin(), listeners.end(),
                   [this](const std::shared_ptr<EventListener>& e) {
@@ -295,6 +224,8 @@ class WritableFileWriter : public AbstractWritableFileWriter {
 #else  // !ROCKSDB_LITE
     (void)listeners;
 #endif
+
+    s3_writable_file_ = static_cast<S3WritableFile*>(writable_file_.get()); //Tarim-TODO: if type not match?
     if (file_checksum_gen_factory != nullptr) {
       FileChecksumGenContext checksum_gen_context;
       checksum_gen_context.file_name = _file_name;
@@ -303,16 +234,16 @@ class WritableFileWriter : public AbstractWritableFileWriter {
               checksum_gen_context);
     }
   }
-  
+
   static IOStatus Create(const std::shared_ptr<FileSystem>& fs,
                          const std::string& fname, const FileOptions& file_opts,
-                         std::unique_ptr<WritableFileWriter>* writer,
+                         std::unique_ptr<ParquetFileWriter>* writer,
                          IODebugContext* dbg);
-  WritableFileWriter(const WritableFileWriter&) = delete;
+  ParquetFileWriter(const ParquetFileWriter&) = delete;
 
-  WritableFileWriter& operator=(const WritableFileWriter&) = delete;
+  ParquetFileWriter& operator=(const ParquetFileWriter&) = delete;
 
-  virtual ~WritableFileWriter() {
+  ~ParquetFileWriter() {
     auto s = Close();
     s.PermitUncheckedError();
   }
@@ -356,9 +287,13 @@ class WritableFileWriter : public AbstractWritableFileWriter {
 
   FSWritableFile* writable_file() const { return writable_file_.get(); }
 
+  parquet::RowGroupWriter* AppendRowGroup(){ 
+    return s3_writable_file_->GetFileWriter()->AppendRowGroup(); 
+  }
+
   bool use_direct_io() { return writable_file_->use_direct_io(); }
 
-  bool BufferIsEmpty() { return buf_.CurrentSize() == 0; }
+  bool BufferIsEmpty() { return false; }
 
   void TEST_SetFileChecksumGenerator(
       FileChecksumGenerator* checksum_generator) {
@@ -385,7 +320,17 @@ class WritableFileWriter : public AbstractWritableFileWriter {
     return IOStatus::IOError("Writer has previous error.");
   }
 
+  void SetSchema(const avro::ValidSchema *schema) {
+    schema_ptr_ = schema;
+  }
+  const avro::ValidSchema* GetSchema() {
+    return schema_ptr_;
+  }
+
  private:
+  const avro::ValidSchema *schema_ptr_;
+  //parquet::ParquetFileWriter file_writer_;
+/*
   // Decide the Rate Limiter priority.
   static Env::IOPriority DecideRateLimiterPriority(
       Env::IOPriority writable_file_io_priority,
@@ -404,5 +349,8 @@ class WritableFileWriter : public AbstractWritableFileWriter {
                                      Env::IOPriority op_rate_limiter_priority);
   IOStatus RangeSync(uint64_t offset, uint64_t nbytes);
   IOStatus SyncInternal(bool use_fsync);
+*/
 };
+
 }  // namespace ROCKSDB_NAMESPACE
+

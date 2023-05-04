@@ -75,6 +75,8 @@ extern uint64_t TableFileNameToNumber(const std::string& name);
 extern std::string TableFileName(const std::vector<DbPath>& db_paths,
                                  uint64_t number, uint32_t path_id);
 
+extern std::string TableFileNameOnS3(const std::string& main_path, uint64_t number);
+
 // Sufficient buffer size for FormatFileNumber.
 const size_t kFormatFileNumberBufSize = 38;
 
